@@ -7,6 +7,7 @@ import dev.openrune.types.SequenceServerType
 import dev.openrune.types.aconverted.SpotanimType
 import dev.openrune.types.aconverted.SynthType
 import org.rsmod.api.combat.commons.CombatAttack
+import org.rsmod.api.combat.manager.MagicRuneManager
 import org.rsmod.api.combat.manager.MagicRuneManager.Companion.isFailure
 import org.rsmod.api.player.protect.ProtectedAccess
 import org.rsmod.api.player.stat.magicLvl
@@ -18,6 +19,9 @@ import org.rsmod.game.entity.Npc
 import org.rsmod.game.entity.PathingEntity
 import org.rsmod.game.entity.Player
 import org.rsmod.game.type.getOrNull
+
+private const val BOOSTED_SPOTANIM_SUFFIX = "_x2"
+private const val BOOSTED_DAMAGE_MULTIPLIER = 2
 
 class ElementalSpells : SpellAttackMap {
     override fun SpellAttackRepository.register(manager: SpellAttackManager) {
@@ -424,11 +428,26 @@ class ElementalSpells : SpellAttackMap {
             }
             val weaponType = getOrNull(attack.weapon)
             val castAnim = weaponType.castStrikeAnim()
+            val boosted = manager.boostElementalSpells(this)
 
             player.anim(castAnim, priority = 6)
-            spotanim(launch, height = 92)
+            spotanim(launch.boosted(boosted), height = 92)
 
-            val proj = manager.spawnProjectile(this, target, travel, "projanim.magic_spell")
+            fire(target, attack, castResult, "projanim.magic_spell", boosted)
+            if (boosted) {
+                fire(target, attack, castResult, "projanim.magic_spell_double", boosted)
+            }
+            manager.continueCombatIfAutocast(this, target)
+        }
+
+        private fun ProtectedAccess.fire(
+            target: PathingEntity,
+            attack: CombatAttack.Spell,
+            castResult: MagicRuneManager.CastResult,
+            projanim: String,
+            boosted: Boolean,
+        ) {
+            val proj = manager.spawnProjectile(this, target, travel.boosted(boosted), projanim)
             val (serverDelay, clientDelay) = proj.durations
             val spell = attack.spell.obj
 
@@ -436,11 +455,10 @@ class ElementalSpells : SpellAttackMap {
             if (splash) {
                 manager.playSplashFx(this, target, clientDelay, castSound, soundRadius = 8)
                 manager.queueSplashHit(this, target, spell, clientDelay, serverDelay)
-                manager.continueCombatIfAutocast(this, target)
                 return
             }
 
-            val baseMaxHit = getMaxHit(player.magicLvl)
+            val baseMaxHit = getMaxHit(player.magicLvl) * if (boosted) BOOSTED_DAMAGE_MULTIPLIER else 1
             val damage = manager.rollMaxHit(this, target, attack, castResult, baseMaxHit)
             manager.playHitFx(
                 source = this,
@@ -448,14 +466,15 @@ class ElementalSpells : SpellAttackMap {
                 clientDelay = clientDelay,
                 castSound = castSound,
                 soundRadius = 8,
-                hitSpot = impact,
+                hitSpot = impact.boosted(boosted),
                 hitSpotHeight = 124,
                 hitSound = hitSound,
             )
             manager.giveCombatXp(this, target, attack, damage)
             manager.queueMagicHit(this, target, spell, damage, clientDelay, serverDelay)
-            manager.continueCombatIfAutocast(this, target)
         }
+
+        private fun String.boosted(boosted: Boolean): String = if (boosted) this + BOOSTED_SPOTANIM_SUFFIX else this
 
         private fun ItemServerType?.castStrikeAnim(): String =
             if (this != null && isCategoryType("category.staff")) {

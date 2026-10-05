@@ -98,6 +98,9 @@ internal object InternalNpcHeadbars {
     }
 
     private fun calculateFill(segments: Int, currHp: Int, maxHp: Int): Int {
-        return (currHp * segments) / maxHp
+        if (maxHp <= 0) {
+            return 0
+        }
+        return ((currHp * segments) / maxHp).coerceIn(0, segments)
     }
 }

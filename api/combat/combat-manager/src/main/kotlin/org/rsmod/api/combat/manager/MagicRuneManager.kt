@@ -36,6 +36,7 @@ constructor(
     private val staffSubs: StaffSubstituteRepository,
     private val runeSubs: RuneSubstituteRepository,
     private val questRequirements: Set<SpellQuestRequirement>,
+    private val perkHooks: Set<PlayerCombatPerkHook> = emptySet(),
 ) {
     private val Player.spellbook by enumVarBit<Spellbook>("varbit.spellbook")
 
@@ -61,6 +62,9 @@ constructor(
         val accessFailure = validateAccess(player, spell, book)
         if (accessFailure != null) {
             return accessFailure
+        }
+        if (player.castsFree()) {
+            return CastResult.Success.AllUnlimited
         }
         return delReqs(player, spell)
     }
@@ -90,6 +94,9 @@ constructor(
      * Otherwise, sends the appropriate missing-requirement message to [player] and returns `false`.
      */
     public fun hasRunes(player: Player, spell: MagicSpell): Boolean {
+        if (player.castsFree()) {
+            return true
+        }
         val invalid = validateSpell(player, spell).firstOrNull(MagicRunes.Validation::isInvalid)
         if (invalid != null) {
             val message = invalid.requirementMessage()
@@ -245,6 +252,8 @@ constructor(
         }
         return null
     }
+
+    private fun Player.castsFree(): Boolean = perkHooks.any { it.freeCasting(this) }
 
     private fun Player.useFakeRunes(): Boolean {
         return vars["varbit.barbassault_areaexit_pending"] == 1 || vars["varbit.br_ingame"] == 1

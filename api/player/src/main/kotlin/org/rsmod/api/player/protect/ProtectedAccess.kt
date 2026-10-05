@@ -126,6 +126,7 @@ import org.rsmod.api.player.ui.ifOpenSub
 import org.rsmod.api.player.ui.ifSetAnim
 import org.rsmod.api.player.ui.ifSetEvents
 import org.rsmod.api.player.ui.ifSetHide
+import org.rsmod.api.player.ui.ifSetAngle
 import org.rsmod.api.player.ui.ifSetModel
 import org.rsmod.api.player.ui.ifSetNpcHead
 import org.rsmod.api.player.ui.ifSetObj
@@ -3776,6 +3777,10 @@ public class ProtectedAccess(
 
     public fun ifSetModel(target: String, model: Int) {
         player.ifSetModel(target, model)
+    }
+
+    public fun ifSetAngle(target: String, angleX: Int, angleY: Int, zoom: Int) {
+        player.ifSetAngle(target, angleX, angleY, zoom)
     }
 }
 

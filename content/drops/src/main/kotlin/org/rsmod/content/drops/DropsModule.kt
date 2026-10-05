@@ -1,6 +1,7 @@
 package org.rsmod.content.drops
 
 import org.rsmod.api.death.NpcDeathKillHook
+import org.rsmod.api.droptable.DropRateOverrideProvider
 import org.rsmod.api.droptable.DropRateBoosts
 import org.rsmod.api.droptable.KillRollContext
 import org.rsmod.api.droptable.toml.DropTableTomlResolver
@@ -15,5 +16,6 @@ public class DropsModule : PluginModule() {
         }
         bind(DropTableTomlResolver::class.java).to(ContentDropTableTomlResolver::class.java)
         addSetBinding<NpcDeathKillHook>(NpcDropTableKillHook::class.java)
+        newSetBinding<DropRateOverrideProvider>()
     }
 }

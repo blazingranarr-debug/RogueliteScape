@@ -2,6 +2,7 @@ package dtx.rs
 
 import dtx.core.ArgMap
 import dtx.core.RollResult
+import dtx.core.RollOverrides
 import dtx.impl.chance.RateBoosts
 import dtx.impl.weighted.WeightedRollable
 import dtx.impl.weighted.WeightedTable
@@ -17,14 +18,41 @@ public class RSWeightedTable<T, R>(
 ) : RSTable<T, R>, WeightedTable<T, R>, TableHooks<T, R> by hooks {
 
     override fun selectEntries(byTarget: T, otherArgs: ArgMap): List<RSWeightEntry<T, R>> = buildList {
+        val included = tableEntries.filter { it.includeInRoll(byTarget, otherArgs) }
+        val weights = effectiveWeights(included, otherArgs[RollOverrides.probability])
         var total = 0
 
-        tableEntries.forEach {
-            if (it.includeInRoll(byTarget, otherArgs)) {
-                val upper = total + it.weight
-                val entry = RSWeightEntry(total, upper.toInt(), it.rollable, it.boosted)
-                total = entry.rangeEnd
-                add(entry)
+        included.forEachIndexed { index, it ->
+            val upper = total + weights[index]
+            val entry = RSWeightEntry(total, upper.toInt(), it.rollable, it.boosted)
+            total = entry.rangeEnd
+            add(entry)
+        }
+    }
+
+    /**
+     * Overridden entries get exactly their requested share of [OVERRIDE_TOTAL]; the remaining
+     * entries split what is left in proportion to their own weights.
+     */
+    private fun effectiveWeights(
+        entries: List<WeightedRollable<T, R>>,
+        override: ((Any) -> Double?)?,
+    ): List<Double> {
+        val probabilities = entries.map { override?.invoke(it)?.coerceIn(0.0, 1.0) }
+        if (probabilities.all { it == null }) {
+            return entries.map { it.weight }
+        }
+        val fixed = probabilities.sumOf { it ?: 0.0 }
+        val free = entries.indices.filter { probabilities[it] == null }.sumOf { entries[it].weight }
+        val remaining = (1.0 - fixed).coerceAtLeast(0.0)
+        return entries.mapIndexed { index, entry ->
+            val probability = probabilities[index]
+            when {
+                probability != null && (free <= 0.0 || fixed > 1.0) ->
+                    OVERRIDE_TOTAL * probability / fixed.coerceAtLeast(MIN_WEIGHT)
+                probability != null -> OVERRIDE_TOTAL * probability
+                free <= 0.0 -> 0.0
+                else -> OVERRIDE_TOTAL * remaining * entry.weight / free
             }
         }
     }
@@ -101,6 +129,7 @@ public class RSWeightedTable<T, R>(
 
     public companion object {
         private const val MIN_WEIGHT = 0.0001
+        private const val OVERRIDE_TOTAL = 1_000_000.0
         private val EmptyTable = RSWeightedTable<Any?, Any?>("", emptyList())
 
         @Suppress("UNCHECKED_CAST")

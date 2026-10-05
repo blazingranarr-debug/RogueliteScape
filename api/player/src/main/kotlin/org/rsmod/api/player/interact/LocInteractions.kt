@@ -25,7 +25,11 @@ import org.rsmod.utils.bits.getBits
 
 public class LocInteractions
 @Inject
-constructor(private val boundValidator: BoundValidator, private val eventBus: EventBus) {
+constructor(
+    private val boundValidator: BoundValidator,
+    private val eventBus: EventBus,
+    private val overrides: Set<LocOpOverride> = emptySet(),
+) {
     public fun interact(
         player: Player,
         loc: BoundLocInfo,
@@ -62,6 +66,13 @@ constructor(private val boundValidator: BoundValidator, private val eventBus: Ev
         type: ObjectServerType = ServerCacheManager.getObject(loc.id)!!,
         base: BoundLocInfo = loc,
     ): OpEvent? {
+        if (base === loc && overrides.any { it.overrides(player, base) }) {
+            val overrideEvent = toDefaultOp(base, loc, type, op)
+            if (eventBus.contains(overrideEvent::class.java, overrideEvent.id)) {
+                return overrideEvent
+            }
+        }
+
         val multiLoc = multiLoc(loc, type, player.vars)
         if (multiLoc != null) {
             val multiLocType = ServerCacheManager.getObject(multiLoc.id)!!

@@ -11,5 +11,6 @@ public class CombatManagerModule : PluginModule() {
         bindInstance<RangedAmmoManager>()
 
         newSetBinding<SpellQuestRequirement>()
+        newSetBinding<PlayerCombatPerkHook>()
     }
 }

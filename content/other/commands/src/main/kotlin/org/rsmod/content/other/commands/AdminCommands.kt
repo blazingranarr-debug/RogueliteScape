@@ -6,7 +6,6 @@ import dev.openrune.ServerCacheManager
 import dev.openrune.rscm.RSCM
 import dev.openrune.rscm.RSCM.asRSCM
 import dev.openrune.rscm.RSCMType
-import dev.openrune.types.ItemServerType
 import dev.openrune.types.NpcMode
 import jakarta.inject.Inject
 import kotlin.math.max
@@ -49,8 +48,14 @@ import org.rsmod.api.registry.region.RegionRegistry
 import org.rsmod.api.repo.loc.LocRepository
 import org.rsmod.api.repo.npc.NpcRepository
 import org.rsmod.api.spells.autocast.MagicSpellbookManager
-import org.rsmod.api.utils.format.formatAmount
 import org.rsmod.api.utils.system.SafeServiceExit
+import org.rsmod.content.other.commands.drops.AdminDropUi
+import org.rsmod.content.other.commands.godmode.AdminGodMode
+import org.rsmod.content.other.commands.godmode.toggleGodMode
+import org.rsmod.content.other.commands.instance.AdminInstances
+import org.rsmod.content.other.commands.perks.MetaProgress
+import org.rsmod.content.other.commands.portal.AdminPortals
+import org.rsmod.content.other.commands.ui.AdminToolUi
 import org.rsmod.game.GameUpdate
 import org.rsmod.game.cheat.Cheat
 import org.rsmod.game.entity.Npc
@@ -67,17 +72,22 @@ import org.rsmod.map.square.MapSquareGrid
 import org.rsmod.map.square.MapSquareKey
 import org.rsmod.map.zone.ZoneGrid
 import org.rsmod.map.zone.ZoneKey
-import org.rsmod.objtx.TransactionResult
 import org.rsmod.plugin.loader.ExternalPluginLoader
 import org.rsmod.plugin.loader.PluginStatus
 import org.rsmod.plugin.scripts.PluginScript
 import org.rsmod.plugin.scripts.ScriptContext
 import org.rsmod.routefinder.loc.LocLayerConstants
-import org.simmetrics.metrics.StringMetrics
 
 class AdminCommands
 @Inject
-constructor(
+internal constructor(
+    private val tools: AdminTools,
+    private val instances: AdminInstances,
+    private val portals: AdminPortals,
+    private val godMode: AdminGodMode,
+    private val adminToolUi: AdminToolUi,
+    private val dropUi: AdminDropUi,
+    private val metaProgress: MetaProgress,
     private val protectedAccess: ProtectedAccessLauncher,
     private val playerList: PlayerList,
     private val locRepo: LocRepository,
@@ -91,8 +101,6 @@ constructor(
     private val spellbooks: MagicSpellbookManager,
 ) : PluginScript() {
     private val logger = InlineLogger()
-
-    private val levenshteinMetric = StringMetrics.levenshtein()
 
     private var Player.insideWilderness by boolVarBit("varbit.inside_wilderness")
 
@@ -140,8 +148,8 @@ constructor(
             invalidArgs = "Use as ::objectdel duration"
         }
 
-        onCommand("npc", "Spawn npc", ::npcAdd) {
-            invalidArgs = "Use as ::npc duration npcDebugNameOrId (ex: 100 prison_pete)"
+        onCommand("npc", "Spawn an admin npc (ex: ::npc goblin)", ::npcSpawn) {
+            invalidArgs = "Use as ::npc npcNameOrId (ex: ::npc goblin)"
         }
 
         onCommand("npcadd", "Spawn npc", ::npcAdd) {
@@ -230,6 +238,27 @@ constructor(
             invalidArgs = "Use as ::spellbook standard|ancients|lunars|arceuus"
         }
         onCommand("god", "Toggle god mode (invincibility)", ::god)
+        onCommand("godmode", "Toggle godmode (invulnerable, all stats 99)", ::godmode)
+        onCommand("findnpc", "List npcs in the world matching a name or id", ::findNpc) {
+            invalidArgs = "Use as ::findnpc nameOrId (ex: ::findnpc hans)"
+        }
+        onCommand("telenpc", "Teleport to an npc (ex: ::telenpc hans 2)", ::teleNpc) {
+            invalidArgs = "Use as ::telenpc nameOrId [index] (ex: ::telenpc hans)"
+        }
+        onCommand("delnpc", "Delete the nearest npc (ex: ::delnpc 3)", ::delNpc)
+        onCommand("loc", "Spawn a loc (ex: ::loc bookcase [angle] [shape])", ::locSpawn) {
+            invalidArgs = "Use as ::loc nameOrId [angle] [shape] (ex: ::loc bookcase 1)"
+        }
+        onCommand("delloc", "Delete the nearest loc (ex: ::delloc 3)", ::delLoc)
+        onCommand("adminwand", "Spawn the admin wand", ::adminWand)
+        onCommand("instances", "List admin instances", ::listInstances)
+        onCommand("admintool", "Open the Admin Tool interface", ::adminTool)
+        onCommand("perkpoints", "Give yourself perk-tree points (ex: ::perkpoints 50)", ::perkPoints) {
+            invalidArgs = "Use as ::perkpoints amount (ex: ::perkpoints 50)"
+        }
+        onCommand("droptable", "Open an npc drop table (ex: ::droptable goblin)", ::dropTable) {
+            invalidArgs = "Use as ::droptable npcNameOrId (ex: ::droptable goblin)"
+        }
         onCommand(
             "componentdebug",
             "Toggle interface component click debug output",
@@ -670,22 +699,120 @@ constructor(
     private fun invAdd(cheat: Cheat) =
         with(cheat) {
             val (typeName, countArg) = args.asTypeNameAndNumber(defaultNumber = 1)
-            val type = resolveObj(typeName)
-            if (type == null) {
-                player.mes("There is no obj mapped to: '$typeName'")
-                return
-            }
-
             val count = countArg.toLong().coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-            val objName = type.name.ifEmpty { typeName }
+            tools.spawnItem(player, typeName, count)
+        }
 
-            val spawned = player.invAdd(player.inv, type.id, count, strict = false)
-            if (spawned.err is TransactionResult.RestrictedDummyitem) {
-                player.mes("You can't spawn this item!")
+    private fun npcSpawn(cheat: Cheat) =
+        with(cheat) {
+            val query = args.joinToString(" ")
+            val type = tools.searchNpcTypes(query).firstOrNull()
+            if (type == null) {
+                player.mes("There is no npc matching: '$query'")
                 return
             }
-            player.mes("Spawned inv obj `$objName` x ${spawned.completed().formatAmount}")
+            tools.spawnNpc(player, type)
+            player.mes("Spawned ${AdminActions.npcLabel(type)}.")
         }
+
+    private fun findNpc(cheat: Cheat) = with(cheat) { tools.listNpcs(player, args.joinToString(" ")) }
+
+    private fun teleNpc(cheat: Cheat): Unit =
+        with(cheat) {
+            val index = if (args.size > 1) args.last().toIntOrNull() else null
+            val query = (if (index != null) args.dropLast(1) else args).joinToString(" ")
+            val npc = tools.resolveNpcTeleport(query, index ?: 1)
+            if (npc == null) {
+                player.mes("No npc found matching '$query'${index?.let { " at index $it" } ?: ""}.")
+                return
+            }
+            protectedAccess.launch(player) {
+                telejump(npc.coords, TeleportType.Exempt)
+                mes("Teleported to ${npc.name} at ${npc.coords}.")
+            }
+        }
+
+    private fun delNpc(cheat: Cheat) =
+        with(cheat) {
+            val radius = args.firstOrNull()?.toIntOrNull() ?: AdminTools.DEFAULT_DELETE_RADIUS
+            val npc = tools.deleteNearestNpc(player, radius)
+            player.mes(if (npc != null) "Deleted ${npc.name}." else "No npc within $radius tile(s).")
+        }
+
+    private fun locSpawn(cheat: Cheat) =
+        with(cheat) {
+            val numbers = args.takeLastWhile { it.toIntOrNull() != null }.takeLast(2)
+            val nameArgs = args.dropLast(numbers.size)
+            if (nameArgs.isEmpty()) {
+                player.mes("Use as ::loc nameOrId [angle] [shape] (ex: ::loc bookcase 1)")
+                return
+            }
+            val query = nameArgs.joinToString(" ")
+            val type = tools.searchLocTypes(query).firstOrNull()
+            if (type == null) {
+                player.mes("There is no loc matching: '$query'")
+                return
+            }
+            val angle = numbers.getOrNull(0)?.toIntOrNull()?.let { LocAngle[it and 3] } ?: LocAngle.West
+            val shape =
+                numbers.getOrNull(1)?.toIntOrNull()?.let { LocShape[it] } ?: LocShape.CentrepieceStraight
+            val loc = tools.spawnLoc(player, type, angle, shape)
+            player.mes("Spawned loc '${type.internalName}' (angle=${angle.name}, shape=${shape.name}).")
+            logger.debug { "Spawned admin loc: loc=$loc" }
+        }
+
+    private fun delLoc(cheat: Cheat) =
+        with(cheat) {
+            val radius = args.firstOrNull()?.toIntOrNull() ?: AdminTools.DEFAULT_DELETE_RADIUS
+            val loc = tools.deleteNearestLoc(player, radius)
+            player.mes(
+                if (loc != null) "Deleted loc at ${loc.coords}." else "No loc within $radius tile(s)."
+            )
+        }
+
+    private fun adminWand(cheat: Cheat) = with(cheat) { tools.spawnAdminWand(player) }
+
+    private fun godmode(cheat: Cheat) = with(cheat) { toggleGodMode(player, godMode) }
+
+    private fun listInstances(cheat: Cheat) =
+        with(cheat) {
+            val all = instances.all()
+            if (all.isEmpty()) {
+                player.mes("There are no admin instances.")
+                return
+            }
+            player.mes("Admin instances (${all.size}):")
+            for (record in all) {
+                player.mes(
+                    "  #${record.id} ${record.name} by ${record.createdBy}: " +
+                        "${record.npcs.size} npcs, ${record.locs.size} locs, " +
+                        "${record.deletedLocs.size} removed, " +
+                        "${portals.portalsTo(record.id)} portal(s) lead here" +
+                        (record.levelCap?.let { ", level cap $it" } ?: "")
+                )
+            }
+        }
+
+    private fun perkPoints(cheat: Cheat) =
+        with(cheat) {
+            val amount = args.firstOrNull()?.toIntOrNull()?.coerceAtLeast(0) ?: 10
+            val total = metaProgress.addPoints(player, amount)
+            player.mes("Added $amount perk points ($total total).")
+        }
+
+    private fun dropTable(cheat: Cheat): Unit =
+        with(cheat) {
+            val query = args.joinToString(" ")
+            val type = tools.searchNpcTypes(query).firstOrNull()
+            if (type == null) {
+                player.mes("There is no npc matching: '$query'")
+                return
+            }
+            protectedAccess.launch(player) { with(dropUi) { open(type, admin = true) } }
+        }
+
+    private fun adminTool(cheat: Cheat) =
+        with(cheat) { protectedAccess.launch(player) { with(adminToolUi) { open() } } }
 
     private fun invClear(cheat: Cheat) = with(cheat) { player.invClear(player.inv) }
 
@@ -1042,53 +1169,4 @@ constructor(
             protectedAccess.launch(player) { ifOpenMain(interfName) }
             player.mes("Opened interface: '$interfName' (id=$typeId)")
         }
-
-    private fun resolveArgTypeId(arg: String, names: Map<String, Int>): Int? {
-        val argAsInt = arg.toIntOrNull()
-        if (argAsInt != null) {
-            return argAsInt
-        }
-        val sanitized = arg.replace("-", "_")
-        return names[sanitized]
-    }
-
-    private fun resolveTypeName(name: String, names: Map<String, Int>): String =
-        when {
-            name in names -> name
-            name.toIntOrNull() != null -> name
-            else -> findClosestNameMatch(name, names.keys) ?: name
-        }
-
-    private fun List<String>.asTypeNameAndNumber(defaultNumber: Number): Pair<String, String> =
-        if (size > 1 && last().toLongOrNull() != null) {
-            dropLast(1).joinToString("_") to last()
-        } else {
-            joinToString("_") to defaultNumber.toString()
-        }
-
-    private fun resolveObj(input: String): ItemServerType? {
-        val id = input.toIntOrNull()
-        if (id != null) {
-            return ServerCacheManager.getItem(id)
-        }
-        return ServerCacheManager.getItem("obj.$input".asRSCM(RSCMType.OBJ))
-    }
-
-    private fun List<String>.asTypeName(): String = joinToString("_")
-
-    private fun findClosestNameMatch(input: String, names: Iterable<String>): String? {
-        val normalizedInput = input.replace("_", " ")
-
-        var bestMatchScore = 0.0f
-        var bestMatchName: String? = null
-        for (name in names) {
-            val score = levenshteinMetric.compare(normalizedInput, name.replace("_", " "))
-            if (score > bestMatchScore) {
-                bestMatchScore = score
-                bestMatchName = name
-            }
-        }
-
-        return if (bestMatchScore >= 0.5) bestMatchName else null
-    }
 }

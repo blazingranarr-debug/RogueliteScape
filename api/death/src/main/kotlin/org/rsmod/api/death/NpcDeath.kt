@@ -31,6 +31,7 @@ constructor(
     private val objRepo: ObjRepository,
     private val deathDropHooks: Set<NpcDeathDropHook>,
     private val deathKillHooks: Set<NpcDeathKillHook>,
+    private val dropOverrides: Set<NpcDeathDropOverride>,
 ) {
     private var lootTrackerEventId: Int = 0
 
@@ -53,9 +54,18 @@ constructor(
             val duration = hero.lootDropDuration ?: constants.lootdrop_duration
             val lootTrackerEventId = nextLootTrackerEventId()
 
+            val baseKillCtx =
+                NpcDeathKillContext(
+                    hero = hero,
+                    npc = this,
+                    lootTrackerEventId = lootTrackerEventId,
+                    dropCoords = dropCoords,
+                )
+            val dropsOverridden = dropOverrides.any { it.overrideDrops(baseKillCtx) }
+
             val remainsParam = paramOrNull(params.dropped_remains)
             val explicitlyNoRemains = remainsParam == null && type.hasParam(params.dropped_remains.raw)
-            if (!explicitlyNoRemains) {
+            if (!dropsOverridden && !explicitlyNoRemains) {
                 val droppedRemains =
                     remainsParam
                         ?: ServerCacheManager.getItem("obj.bones".asRSCM())
@@ -87,13 +97,7 @@ constructor(
                 }
             }
 
-            val killCtx =
-                NpcDeathKillContext(
-                    hero = hero,
-                    npc = this,
-                    lootTrackerEventId = lootTrackerEventId,
-                    dropCoords = dropCoords,
-                )
+            val killCtx = baseKillCtx.copy(dropsOverridden = dropsOverridden)
             for (hook in deathKillHooks) {
                 hook.onKill(killCtx)
             }

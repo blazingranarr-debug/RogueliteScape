@@ -9,6 +9,7 @@ import dev.openrune.rscm.RSCMType
 import dev.openrune.types.SequenceServerType
 import dev.openrune.types.aconverted.interf.IfSubType
 import java.awt.Color
+import net.rsprot.protocol.game.outgoing.interfaces.IfSetAngle
 import net.rsprot.protocol.game.outgoing.interfaces.IfCloseSub
 import net.rsprot.protocol.game.outgoing.interfaces.IfMoveSub
 import net.rsprot.protocol.game.outgoing.interfaces.IfOpenSub
@@ -663,4 +664,8 @@ private fun Player.ifSetObj(target: String, obj: Int, zoomOrCount: Int) {
 public fun Player.ifSetModel(internal: String, model: Int) {
     val target = ServerCacheManager.fromComponent(internal.asRSCM(RSCMType.COMPONENT))
     client.write(IfSetModelV2(target.interfaceId, target.component, model))
+}
+
+public fun Player.ifSetAngle(internal: String, angleX: Int, angleY: Int, zoom: Int) {
+    client.write(IfSetAngle(internal.asRSCM(RSCMType.COMPONENT), angleX, angleY, zoom))
 }

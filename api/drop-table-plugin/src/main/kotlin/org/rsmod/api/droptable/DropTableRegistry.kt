@@ -6,6 +6,8 @@ import com.fasterxml.jackson.dataformat.toml.TomlFactory
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.github.michaelbull.logging.InlineLogger
+import dev.openrune.rscm.RSCM
+import dev.openrune.rscm.RSCMType
 import dtx.rs.RSDropTable
 import io.github.classgraph.ScanResult
 import jakarta.inject.Inject
@@ -28,6 +30,20 @@ constructor(tomlResolver: DropTableTomlResolver) {
     private val tablesByLoc: MutableMap<String, RSDropTable<Player, DropRollItem>> = hashMapOf()
     private val tomlTablesByNpc: MutableMap<String, MutableSet<String>> = hashMapOf()
 
+    /**
+     * Tables keyed by npc id. Tables name their npcs by gameval, and one id can have several
+     * gameval aliases, so looking a table up by a reverse-mapped name can miss.
+     */
+    private val tablesById: Map<Int, List<RSDropTable<Player, DropRollItem>>> by lazy {
+        val byId = HashMap<Int, MutableList<RSDropTable<Player, DropRollItem>>>()
+        for ((name, tables) in tablesByNpc) {
+            val id = RSCM.getRSCMOrNull(name, RSCMType.NPC) ?: continue
+            val list = byId.getOrPut(id) { mutableListOf() }
+            tables.filterTo(list) { table -> list.none { it === table } }
+        }
+        byId
+    }
+
     private val logger = InlineLogger()
 
     init {
@@ -46,7 +62,7 @@ constructor(tomlResolver: DropTableTomlResolver) {
         npc: Npc,
         areaChecker: AreaChecker?,
     ): RSDropTable<Player, DropRollItem>? {
-        val candidates = tablesByNpc[npc.type.internalName] ?: return null
+        val candidates = tablesById[npc.type.id]?.takeIf { it.isNotEmpty() } ?: return null
         if (candidates.size == 1) {
             return candidates.first()
         }
@@ -69,6 +85,12 @@ constructor(tomlResolver: DropTableTomlResolver) {
         }
 
         return candidates.firstOrNull { it.areas.isEmpty() } ?: candidates.first()
+    }
+
+    /** Looks a table up by npc type alone, preferring the one not tied to an area. */
+    public fun forNpcType(id: Int): RSDropTable<Player, DropRollItem>? {
+        val candidates = tablesById[id] ?: return null
+        return candidates.firstOrNull { it.areas.isEmpty() } ?: candidates.firstOrNull()
     }
 
     public fun forLoc(loc: String): RSDropTable<Player, DropRollItem>? = tablesByLoc[loc]

@@ -22,6 +22,9 @@ public class SpellAttackManager
 constructor(private val manager: PlayerAttackManager, private val runes: MagicRuneManager) {
     private val ProtectedAccess.autocastEnabled by boolVarBit("varbit.autocast_set")
 
+    public fun boostElementalSpells(source: ProtectedAccess): Boolean =
+        manager.boostElementalSpells(source.player)
+
     /**
      * Checks and **consumes** any requirements for [CombatAttack.Spell.spell], delegating to
      * [MagicRuneManager.attemptCast].

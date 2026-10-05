@@ -5,6 +5,8 @@ import dev.openrune.rscm.RSCM.asRSCM
 import dev.openrune.rscm.RSCMType
 import dtx.core.ArgMap
 import dtx.core.RollResult
+import dtx.core.RollOverrides
+import dtx.rs.RSDropTable
 import dtx.core.flatten
 import dtx.core.with
 import jakarta.inject.Inject
@@ -16,6 +18,8 @@ import org.rsmod.api.death.NpcDeathDropHook
 import org.rsmod.api.death.NpcDeathKillContext
 import org.rsmod.api.death.NpcDeathKillHook
 import org.rsmod.api.droptable.DropRollItem
+import org.rsmod.api.droptable.DropRateOverrideProvider
+import org.rsmod.api.droptable.DropTableInspector
 import org.rsmod.api.droptable.DropTableRegistry
 import org.rsmod.api.droptable.KillRollContext
 import org.rsmod.api.droptable.rollCount
@@ -36,9 +40,13 @@ constructor(
     private val objRepo: ObjRepository,
     private val random: GameRandom,
     private val deathDropHooks: Set<NpcDeathDropHook>,
+    private val rateOverrides: Set<DropRateOverrideProvider>,
 ) : NpcDeathKillHook {
 
     override fun onKill(context: NpcDeathKillContext) {
+        if (context.dropsOverridden) {
+            return
+        }
         val table = registry.forNpc(context.npc, areaChecker) ?: return
 
         val player = context.hero
@@ -54,6 +62,7 @@ constructor(
                         ArgMap(
                             KillRollContext.npc with npc,
                             KillRollContext.areaChecker with areaChecker,
+                            RollOverrides.probability with overridesFor(npc, table),
                         ),
                     ).flatten()
         ) {
@@ -72,6 +81,12 @@ constructor(
                     spawnDrop(drop, dropCoords, duration, player, npc, context.lootTrackerEventId)
                 }
         }
+    }
+
+    private fun overridesFor(npc: Npc, table: RSDropTable<Player, DropRollItem>): ((Any) -> Double?)? {
+        val rates = rateOverrides.firstNotNullOfOrNull { it.ratesFor(npc)?.takeIf(Map<String, Int>::isNotEmpty) }
+            ?: return null
+        return DropTableInspector.inspect(table).overrides(rates)
     }
 
     private fun spawnDrop(

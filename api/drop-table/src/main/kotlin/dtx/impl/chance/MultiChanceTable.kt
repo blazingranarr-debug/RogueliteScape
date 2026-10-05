@@ -2,6 +2,7 @@ package dtx.impl.chance
 
 import dtx.core.ArgMap
 import dtx.core.RollResult
+import dtx.core.RollOverrides
 import dtx.core.flattenToList
 import dtx.table.Table
 import dtx.table.TableHooks
@@ -32,15 +33,17 @@ public open class MultiChanceTableImpl<T, R>(
         }
 
         val modifier = rollModifier(target, baseRollFor(target))
+        val override = otherArgs[RollOverrides.probability]
 
         val filtered = entries.filter { entry ->
+            val overridden = override?.invoke(entry)?.coerceIn(0.0, 1.0)?.times(100.0)
 
-            if (entry.chance >= 100.0) {
+            if ((overridden ?: entry.chance) >= 100.0) {
                 return@filter true
             }
 
             val roll = Random.nextDouble(0.0, maxRollChance)
-            val select = (roll * modifier) <= entry.chanceFor(target, otherArgs)
+            val select = (roll * modifier) <= (overridden ?: entry.chanceFor(target, otherArgs))
 
             select
         }

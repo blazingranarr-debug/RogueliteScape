@@ -3,7 +3,6 @@ package org.rsmod.api.player.headbar
 import dev.openrune.ServerCacheManager
 import dev.openrune.rscm.RSCM.asRSCM
 import dev.openrune.rscm.RSCMType
-import dev.openrune.types.HealthBarServerType
 import org.rsmod.game.headbar.Headbar
 import org.rsmod.game.hit.Hitmark
 
@@ -112,6 +111,9 @@ internal object InternalPlayerHeadbars {
     }
 
     private fun calculateFill(segments: Int, currHp: Int, maxHp: Int): Int {
-        return (currHp * segments) / maxHp
+        if (maxHp <= 0) {
+            return 0
+        }
+        return ((currHp * segments) / maxHp).coerceIn(0, segments)
     }
 }
