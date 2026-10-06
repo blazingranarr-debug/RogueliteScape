@@ -9,6 +9,7 @@ import jakarta.inject.Singleton
 import org.rsmod.api.config.constants
 import org.rsmod.api.config.refs.params
 import org.rsmod.api.npc.access.StandardNpcAccess
+import org.rsmod.api.npc.fittingAnim
 import org.rsmod.api.npc.vars.typePlayerUidVarn
 import org.rsmod.api.player.output.ClientScripts
 import org.rsmod.api.player.output.soundSynth
@@ -159,9 +160,13 @@ public suspend fun StandardNpcAccess.death(npcRepo: NpcRepository, players: Play
         }
     }
 
-    val deathAnim = param(params.death_anim)
-    anim(RSCM.getReverseMapping(RSCMType.SEQ, deathAnim.id))
-    delay(deathAnim)
+    val deathAnim = npc.fittingAnim(params.death_anim)
+    if (deathAnim != null) {
+        anim(RSCM.getReverseMapping(RSCMType.SEQ, deathAnim.id))
+        delay(deathAnim)
+    } else {
+        delay(param(params.death_anim))
+    }
 
     if (npc.respawns) {
         npcRepo.despawn(npc, npc.type.respawnRate)

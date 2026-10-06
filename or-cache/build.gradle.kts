@@ -62,6 +62,13 @@ tasks {
         args = listOf("CLEAN_CS2")
     }
 
+    register<JavaExec>("fillNpcAnims") {
+        group = "tools"
+        description = "Fills missing npc attack/death animations in .data/raw-cache/server/npcs.toml"
+        classpath = sourceSets["main"].runtimeClasspath
+        mainClass.set("dev.openrune.tools.NpcAnimationFiller")
+    }
+
     register<JavaExec>("mergePluginGamevals") {
         group = "cache"
         description =

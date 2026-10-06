@@ -15,6 +15,7 @@ import org.rsmod.api.combat.player.aggressiveNpc
 import org.rsmod.api.combat.player.lastCombat
 import org.rsmod.api.config.refs.params
 import org.rsmod.api.npc.access.StandardNpcAccess
+import org.rsmod.api.npc.fittingAnim
 import org.rsmod.api.npc.isInCombat
 import org.rsmod.api.player.hit.modifier.PlayerHitModifier
 import org.rsmod.api.player.isValidTarget
@@ -109,9 +110,7 @@ constructor(
     }
 
     private fun StandardNpcAccess.playAttackFx(target: Player) {
-        val attackAnim =
-            RSCM.getReverseMapping(RSCMType.SEQ, npc.visType.param(params.attack_anim).id)
-        anim(attackAnim)
+        npc.fittingAnim(params.attack_anim)?.let { anim(RSCM.getReverseMapping(RSCMType.SEQ, it.id)) }
         npc.visType.paramOrNull(params.attack_sound)?.let(target::soundSynth)
     }
 

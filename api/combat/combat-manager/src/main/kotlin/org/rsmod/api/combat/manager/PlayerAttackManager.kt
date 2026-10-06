@@ -105,9 +105,10 @@ constructor(
     public fun boostElementalSpells(player: Player): Boolean =
         perkHooks.any { it.boostElementalSpells(player) }
 
-    private fun notifyAttack(source: Player, target: PathingEntity) {
+    private fun notifyAttack(source: Player, target: PathingEntity, damage: Int) {
         for (hook in perkHooks) {
             hook.onPlayerAttack(source, target)
+            hook.onPlayerHit(source, target, damage)
         }
     }
 
@@ -719,7 +720,7 @@ constructor(
         }
 
     private fun queueMeleeHit(source: Player, target: Npc, damage: Int, delay: Int): Hit {
-        notifyAttack(source, target)
+        notifyAttack(source, target, damage)
         // Note: Retaliation must be queued _before_ the hit. If queued after, every hit would
         // trigger the "speed-up" death mechanic, since the hit queues would no longer be the
         // last entries in the queue list at the time of processing.
@@ -731,7 +732,7 @@ constructor(
     }
 
     private fun queueMeleeHit(source: Player, target: Player, damage: Int, delay: Int): Hit {
-        notifyAttack(source, target)
+        notifyAttack(source, target, damage)
         // Note: Retaliation must be queued _before_ the hit. If queued after, every hit would
         // trigger the "speed-up" death mechanic, since the hit queues would no longer be the
         // last entries in the queue list at the time of processing.
@@ -1039,7 +1040,7 @@ constructor(
         clientDelay: Int,
         hitDelay: Int,
     ): Hit {
-        notifyAttack(source, target)
+        notifyAttack(source, target, damage)
         // Note: Retaliation must be queued _before_ the hit. If queued after, every hit would
         // trigger the "speed-up" death mechanic, since the hit queues would no longer be the
         // last entries in the queue list at the time of processing.
@@ -1067,7 +1068,7 @@ constructor(
         clientDelay: Int,
         hitDelay: Int,
     ): Hit {
-        notifyAttack(source, target)
+        notifyAttack(source, target, damage)
         // Note: Retaliation must be queued _before_ the hit. If queued after, every hit would
         // trigger the "speed-up" death mechanic, since the hit queues would no longer be the
         // last entries in the queue list at the time of processing.
@@ -1126,7 +1127,7 @@ constructor(
         damage: Int,
         hitDelay: Int,
     ): Hit {
-        notifyAttack(source, target)
+        notifyAttack(source, target, damage)
         val hit =
             target.queueHit(
                 source = source,
@@ -1146,7 +1147,7 @@ constructor(
         damage: Int,
         hitDelay: Int,
     ): Hit {
-        notifyAttack(source, target)
+        notifyAttack(source, target, damage)
         val hit =
             target.queueHit(
                 source = source,
@@ -1556,7 +1557,7 @@ constructor(
         hitDelay: Int,
         retaliationDelay: Int,
     ): Hit {
-        notifyAttack(source, target)
+        notifyAttack(source, target, damage)
         // Note: Retaliation must be queued _before_ the hit. If queued after, every hit would
         // trigger the "speed-up" death mechanic, since the hit queues would no longer be the
         // last entries in the queue list at the time of processing.
@@ -1584,7 +1585,7 @@ constructor(
         hitDelay: Int,
         retaliationDelay: Int,
     ): Hit {
-        notifyAttack(source, target)
+        notifyAttack(source, target, damage)
         // Note: Retaliation must be queued _before_ the hit. If queued after, every hit would
         // trigger the "speed-up" death mechanic, since the hit queues would no longer be the
         // last entries in the queue list at the time of processing.

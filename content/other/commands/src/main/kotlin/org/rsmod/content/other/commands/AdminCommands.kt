@@ -55,6 +55,8 @@ import org.rsmod.content.other.commands.godmode.toggleGodMode
 import org.rsmod.content.other.commands.instance.AdminInstances
 import org.rsmod.content.other.commands.perks.MetaProgress
 import org.rsmod.content.other.commands.portal.AdminPortals
+import org.rsmod.content.other.commands.ui.AdminMenuUi
+import org.rsmod.content.other.commands.ui.MenuMode
 import org.rsmod.content.other.commands.ui.AdminToolUi
 import org.rsmod.game.GameUpdate
 import org.rsmod.game.cheat.Cheat
@@ -86,6 +88,7 @@ internal constructor(
     private val portals: AdminPortals,
     private val godMode: AdminGodMode,
     private val adminToolUi: AdminToolUi,
+    private val adminMenuUi: AdminMenuUi,
     private val dropUi: AdminDropUi,
     private val metaProgress: MetaProgress,
     private val protectedAccess: ProtectedAccessLauncher,
@@ -251,8 +254,12 @@ internal constructor(
         }
         onCommand("delloc", "Delete the nearest loc (ex: ::delloc 3)", ::delLoc)
         onCommand("adminwand", "Spawn the admin wand", ::adminWand)
+        onCommand("builderhammer", "Spawn the Builder's hammer", ::builderHammer)
+        onCommand("builderchisel", "Spawn the Builder's chisel (left-click pastes)", ::builderChisel)
         onCommand("instances", "List admin instances", ::listInstances)
         onCommand("admintool", "Open the Admin Tool interface", ::adminTool)
+        onCommand("adminmenu", "Open the Admin menu", ::adminMenu)
+        onCommand("builder", "Open the Environment Builder", ::builderMenu)
         onCommand("perkpoints", "Give yourself perk-tree points (ex: ::perkpoints 50)", ::perkPoints) {
             invalidArgs = "Use as ::perkpoints amount (ex: ::perkpoints 50)"
         }
@@ -772,6 +779,10 @@ internal constructor(
 
     private fun adminWand(cheat: Cheat) = with(cheat) { tools.spawnAdminWand(player) }
 
+    private fun builderHammer(cheat: Cheat) = with(cheat) { tools.spawnBuilderHammer(player) }
+
+    private fun builderChisel(cheat: Cheat) = with(cheat) { tools.spawnBuilderChisel(player) }
+
     private fun godmode(cheat: Cheat) = with(cheat) { toggleGodMode(player, godMode) }
 
     private fun listInstances(cheat: Cheat) =
@@ -788,7 +799,8 @@ internal constructor(
                         "${record.npcs.size} npcs, ${record.locs.size} locs, " +
                         "${record.deletedLocs.size} removed, " +
                         "${portals.portalsTo(record.id)} portal(s) lead here" +
-                        (record.levelCap?.let { ", level cap $it" } ?: "")
+                        (record.levelCap?.let { ", level cap $it" } ?: "") +
+                        (record.fortuneChance?.let { ", fortune $it%" } ?: "")
                 )
             }
         }
@@ -813,6 +825,12 @@ internal constructor(
 
     private fun adminTool(cheat: Cheat) =
         with(cheat) { protectedAccess.launch(player) { with(adminToolUi) { open() } } }
+
+    private fun adminMenu(cheat: Cheat) =
+        with(cheat) { protectedAccess.launch(player) { with(adminMenuUi) { open() } } }
+
+    private fun builderMenu(cheat: Cheat) =
+        with(cheat) { protectedAccess.launch(player) { with(adminMenuUi) { open(MenuMode.Builder) } } }
 
     private fun invClear(cheat: Cheat) = with(cheat) { player.invClear(player.inv) }
 

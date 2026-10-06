@@ -50,22 +50,32 @@ constructor(
     }
 
     /**
-     * Drives the persistent idle animation set via [Npc.setIdleAnim], re-issuing it while the npc is
-     * idle. It is skipped on ticks where another animation already played (e.g. an attack) or where
-     * the npc moved, since both drive their own client-side animation.
+     * Drives the persistent idle animation set via [Npc.setIdleAnim]. It is sent when the npc settles
+     * and then only once each play of the sequence ends; re-sending it every tick restarts it at frame
+     * 0, which reads as stutter and breaks client-side frame blending (e.g. animation smoothing).
+     * Another animation (e.g. an attack) holds it off until that animation has finished; moving
+     * interrupts it, so it is sent afresh once the npc stops.
      */
     private fun Npc.updateIdleSequence() {
         val idle = idleSequence
         if (idle == EntitySeq.NULL) {
             return
         }
-        if (pendingSequence != EntitySeq.NULL) {
+        val pending = pendingSequence
+        if (pending != EntitySeq.NULL) {
+            idleSequenceResendClock =
+                if (pending == EntitySeq.ZERO) -1 else processedMapClock + sequenceTicks(pending.id)
             return
         }
         if (hasMovedThisCycle) {
+            idleSequenceResendClock = -1
+            return
+        }
+        if (idleSequenceResendClock != -1 && processedMapClock < idleSequenceResendClock) {
             return
         }
         infoProtocol.setSequence(idle.id, idle.delay)
+        idleSequenceResendClock = processedMapClock + sequenceTicks(idle.id)
     }
 
     private fun Npc.updateMovement() {

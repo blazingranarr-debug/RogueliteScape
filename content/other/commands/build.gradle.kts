@@ -9,6 +9,7 @@ dependencies {
     implementation(libs.or2.definition)
     implementation(libs.simmetrics.core)
     implementation(projects.api.areaChecker)
+    implementation(projects.api.attr)
     implementation(projects.api.combat.combatCommons)
     implementation(projects.api.instances)
     implementation(projects.api.realm)

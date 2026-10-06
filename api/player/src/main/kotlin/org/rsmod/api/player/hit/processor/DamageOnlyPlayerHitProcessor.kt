@@ -2,7 +2,7 @@ package org.rsmod.api.player.hit.processor
 
 import jakarta.inject.Inject
 import kotlin.math.min
-import org.rsmod.api.player.cheat.adminGodMode
+import org.rsmod.api.player.cheat.isDamageImmune
 import org.rsmod.api.player.death.recordDeathCause
 import org.rsmod.api.player.death.resolveDeathCause
 import org.rsmod.api.player.events.PlayerHitEvents
@@ -28,7 +28,7 @@ constructor(
     private val playerList: PlayerList,
 ) : InstantPlayerHitProcessor {
     override fun Player.process(hit: Hit) {
-        if (adminGodMode) {
+        if (isDamageImmune) {
             return
         }
 

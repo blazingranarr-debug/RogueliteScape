@@ -264,6 +264,9 @@ public class Player(
     public var frozen: Boolean = false
     public var freezeImmune: Boolean = false
 
+    /** Admin no-clip: ground clicks walk in a straight line and steps ignore all collision. */
+    public var noClip: Boolean = false
+
     public val isFrozen: Boolean
         get() = frozen
 

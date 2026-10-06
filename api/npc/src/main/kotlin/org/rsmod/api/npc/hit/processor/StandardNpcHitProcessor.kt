@@ -10,6 +10,7 @@ import org.rsmod.api.npc.access.StandardNpcAccess
 import org.rsmod.api.npc.events.NpcHitEvents
 import org.rsmod.api.npc.headbar.InternalNpcHeadbars
 import org.rsmod.api.npc.hit.NpcDamageContributor
+import org.rsmod.api.npc.hit.NpcDamageImmunity
 import org.rsmod.api.player.ironman.shouldBlockNpcCombatXp
 import org.rsmod.api.player.output.soundSynth
 import org.rsmod.events.EventBus
@@ -24,11 +25,15 @@ constructor(
     private val playerList: PlayerList,
     private val eventBus: EventBus,
     private val damageContributors: Set<NpcDamageContributor>,
+    private val immunities: Set<NpcDamageImmunity>,
 ) : NpcHitProcessor {
     override fun StandardNpcAccess.process(hit: Hit) {
         var changedDamage: Int? = null
         if (!npc.hitpointsLocked && hit.damage > npc.hitpoints) {
             changedDamage = npc.hitpoints
+        }
+        if (hit.damage > 0 && immunities.any { it.isImmune(npc) }) {
+            changedDamage = 0
         }
 
         if (changedDamage == 0) {

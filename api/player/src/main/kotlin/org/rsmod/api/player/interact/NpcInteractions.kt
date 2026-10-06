@@ -49,7 +49,7 @@ constructor(
         op: InteractionOp,
         type: NpcServerType = npc.visType,
     ): OpEvent? {
-        if (type === npc.visType && overrides.any { it.overrides(player, npc) }) {
+        if (type === npc.visType && overrides.any { it.overrides(player, npc, op) }) {
             val overrideEvent = NpcOverrideEvent(npc, op)
             if (eventBus.contains(overrideEvent::class.java, overrideEvent.id)) {
                 return overrideEvent

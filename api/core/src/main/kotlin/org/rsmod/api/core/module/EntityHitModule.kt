@@ -1,6 +1,7 @@
 package org.rsmod.api.core.module
 
 import org.rsmod.api.npc.hit.NpcDamageContributor
+import org.rsmod.api.npc.hit.NpcDamageImmunity
 import org.rsmod.api.npc.hit.modifier.NpcHitModifier
 import org.rsmod.api.npc.hit.modifier.StandardNpcHitModifier
 import org.rsmod.api.npc.hit.processor.NpcHitProcessor
@@ -14,6 +15,7 @@ import org.rsmod.module.ExtendedModule
 public object EntityHitModule : ExtendedModule() {
     override fun bind() {
         newSetBinding<NpcDamageContributor>()
+        newSetBinding<NpcDamageImmunity>()
         bindBaseInstance<NpcHitModifier>(StandardNpcHitModifier::class.java)
         bindBaseInstance<NpcHitProcessor>(StandardNpcHitProcessor::class.java)
         bindBaseInstance<PlayerHitModifier>(StandardPlayerHitModifier::class.java)

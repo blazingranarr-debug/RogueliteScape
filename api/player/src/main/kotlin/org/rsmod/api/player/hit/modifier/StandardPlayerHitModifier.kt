@@ -1,7 +1,7 @@
 package org.rsmod.api.player.hit.modifier
 
 import jakarta.inject.Inject
-import org.rsmod.api.player.cheat.adminGodMode
+import org.rsmod.api.player.cheat.isDamageImmune
 import org.rsmod.api.player.events.PlayerHitEvents
 import org.rsmod.api.player.hit.PlayerAbsorption
 import org.rsmod.events.EventBus
@@ -14,7 +14,7 @@ public class StandardPlayerHitModifier @Inject constructor(private val eventBus:
     override fun HitBuilder.modify(target: Player) {
         target.publishEvent(this)
 
-        if (target.adminGodMode) {
+        if (target.isDamageImmune) {
             damage = 0
             return
         }

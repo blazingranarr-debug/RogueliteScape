@@ -2,6 +2,7 @@ package org.rsmod.api.player.bonus
 
 import dev.openrune.util.Wearpos
 import kotlin.math.max
+import org.rsmod.api.attr.AttributeKey
 import org.rsmod.api.config.constants
 import org.rsmod.api.config.refs.params
 import org.rsmod.api.player.hands
@@ -13,6 +14,9 @@ import org.rsmod.api.player.worn.EquipmentChecks
 import org.rsmod.game.entity.Player
 import org.rsmod.game.type.getInvObj
 import org.rsmod.game.type.getOrNull
+
+/** Prayer bonus granted by effects rather than equipment; shown and used like worn bonus. */
+public val EXTRA_PRAYER_BONUS: AttributeKey<Int> = AttributeKey()
 
 public class WornBonuses {
     public fun strengthBonus(player: Player): Int {
@@ -212,7 +216,7 @@ public class WornBonuses {
             meleeStr = meleeStr,
             rangedStr = rangedStr,
             magicDmg = magicDmg,
-            prayer = prayer,
+            prayer = prayer + (player.attr[EXTRA_PRAYER_BONUS] ?: 0),
             undead = undead,
             slayer = slayer,
             magicDmgAdditive = magicDmgAdditive,

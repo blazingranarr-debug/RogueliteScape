@@ -1,9 +1,12 @@
 package org.rsmod.api.npc
 
+import dev.openrune.SequenceSkeletons
 import dev.openrune.rscm.RSCM.asRSCM
 import dev.openrune.rscm.RSCMType
 import dev.openrune.types.NpcMode
+import dev.openrune.types.SequenceServerType
 import org.rsmod.api.area.checker.AreaChecker
+import org.rsmod.api.config.aliases.ParamSeq
 import org.rsmod.api.config.constants
 import org.rsmod.api.config.refs.done.hitmark_groups
 import org.rsmod.api.config.refs.params
@@ -73,4 +76,18 @@ public fun Npc.isInCombat(): Boolean {
 /** @return `true` if the npc is **currently** in a multi-combat area. */
 public fun Npc.mapMultiway(checker: AreaChecker): Boolean {
     return checker.inArea("area.multiway", coords)
+}
+
+/**
+ * The npc's own animation for [param] or, when it defines none, the param's default animation but
+ * only if that animation is built for the npc's skeleton. Default animations are human ones, and a
+ * human animation played on another model stretches it across the screen.
+ */
+public fun Npc.fittingAnim(param: ParamSeq): SequenceServerType? {
+    visType.paramOrNull(param)?.let {
+        return it
+    }
+    val fallback = visType.param(param)
+    val stand = visType.standAnim
+    return fallback.takeIf { stand < 0 || SequenceSkeletons.compatible(stand, it.id) }
 }

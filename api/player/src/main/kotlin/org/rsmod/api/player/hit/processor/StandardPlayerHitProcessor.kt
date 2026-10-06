@@ -7,6 +7,7 @@ import dev.openrune.types.aconverted.SynthType
 import kotlin.math.min
 import org.rsmod.api.config.constants
 import org.rsmod.api.config.refs.BaseParams
+import org.rsmod.api.player.cheat.isDamageImmune
 import org.rsmod.api.player.death.recordDeathCause
 import org.rsmod.api.player.death.resolveDeathCause
 import org.rsmod.api.player.events.PlayerHitEvents
@@ -42,7 +43,7 @@ public object StandardPlayerHitProcessor : QueuedPlayerHitProcessor {
         // TODO(combat): Process degradation, ring of recoil, retribution, etc.
 
         val oldHitpoints = player.hitpoints
-        val damage = min(oldHitpoints, hit.damage)
+        val damage = if (player.isDamageImmune) 0 else min(oldHitpoints, hit.damage)
         if (damage > 0) {
             statSub("stat.hitpoints", constant = damage, percent = 0)
             recordHitDamage(player, hit, damage)

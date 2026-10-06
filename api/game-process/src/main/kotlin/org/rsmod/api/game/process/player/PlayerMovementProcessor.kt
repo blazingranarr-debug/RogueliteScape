@@ -12,8 +12,10 @@ import org.rsmod.game.entity.Player
 import org.rsmod.game.movement.MoveSpeed
 import org.rsmod.game.movement.RouteDestination
 import org.rsmod.game.movement.RouteRequest
+import org.rsmod.game.movement.RouteRequestCoord
 import org.rsmod.map.CoordGrid
 import org.rsmod.routefinder.Route
+import org.rsmod.routefinder.RouteCoordinates
 import org.rsmod.routefinder.collision.CollisionFlagMap
 import org.rsmod.routefinder.flag.CollisionFlag
 
@@ -37,7 +39,13 @@ constructor(
     }
 
     private fun Player.routeTo(request: RouteRequest) {
-        val route = routeFactory.create(avatar, request)
+        val route =
+            if (noClip && request is RouteRequestCoord) {
+                val dest = request.destination
+                Route(listOf(RouteCoordinates(dest.x, dest.z, dest.level)), alternative = false, success = true)
+            } else {
+                routeFactory.create(avatar, request)
+            }
         cachedMoveSpeed = tempMoveSpeed ?: varMoveSpeed
         moveSpeed = cachedMoveSpeed
         consumeRoute(route)
@@ -110,7 +118,7 @@ constructor(
     }
 
     private fun Player.validatedStep(current: CoordGrid, target: CoordGrid): CoordGrid =
-        if (forcedRoute) {
+        if (forcedRoute || noClip) {
             stepFactory.unvalidated(current, target)
         } else {
             stepFactory.validated(

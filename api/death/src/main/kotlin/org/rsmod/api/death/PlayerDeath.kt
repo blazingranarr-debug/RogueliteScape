@@ -9,7 +9,7 @@ import jakarta.inject.Singleton
 import org.rsmod.api.area.checker.AreaChecker
 import org.rsmod.api.area.checker.isInWildernessBasic
 import org.rsmod.api.mechanics.toxins.Toxin.cureAllToxins
-import org.rsmod.api.player.cheat.adminGodMode
+import org.rsmod.api.player.cheat.isDamageImmune
 import org.rsmod.api.player.death.DEATH_CAUSE_ATTR
 import org.rsmod.api.player.death.DeathCause
 import org.rsmod.api.player.deathResetTimers
@@ -38,7 +38,7 @@ constructor(
     private var Player.insideWilderness by boolVarBit("varbit.inside_wilderness")
 
     public suspend fun death(access: ProtectedAccess) {
-        if (access.player.adminGodMode) {
+        if (access.player.isDamageImmune) {
             access.clearQueue("queue.death")
             access.statHeal("stat.hitpoints", constant = 0, percent = 100)
             return

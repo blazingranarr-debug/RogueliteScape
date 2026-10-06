@@ -139,6 +139,7 @@ object ServerCacheManager {
                 .resolve(Paths.get(".data", "cache", "LIVE"))
                 .normalize()
         CacheJs5GroupProvider.load(liveDir)
+        SequenceSkeletons.init(liveDir, rev)
 
         fonts = FontDecoder(cache).loadAllFonts()
 

@@ -179,6 +179,13 @@ public class Npc(
     public var idleSequence: EntitySeq = EntitySeq.NULL
         private set
 
+    /** Map clock at which [idleSequence] is next re-sent; -1 sends it on the next idle cycle. */
+    public var idleSequenceResendClock: Int = -1
+
+    /** How long one play of sequence [id] lasts, in game ticks (at least 1). */
+    public fun sequenceTicks(id: Int): Int =
+        ServerCacheManager.getAnim(id)?.tickDuration?.coerceAtLeast(1) ?: 1
+
     public var transmog: NpcServerType? = null
         private set
 
@@ -392,6 +399,7 @@ public class Npc(
      */
     public fun setIdleAnim(seq: String) {
         idleSequence = EntitySeq(seq.asRSCM(RSCMType.SEQ), delay = 0, priority = 0)
+        idleSequenceResendClock = -1
     }
 
     /** Clears the persistent idle animation, reverting the npc to its cache `standAnim`. */

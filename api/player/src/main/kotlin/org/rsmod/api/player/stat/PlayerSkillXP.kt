@@ -6,6 +6,7 @@ import dev.openrune.rscm.RSCMType
 import dev.openrune.types.StatType
 import kotlin.math.min
 import org.rsmod.annotations.InternalApi
+import org.rsmod.api.player.cheat.xpBlocked
 import org.rsmod.api.player.ui.PlayerInterfaceUpdates
 import org.rsmod.api.utils.skills.CombatLevel
 import org.rsmod.game.entity.Player
@@ -14,7 +15,7 @@ import org.rsmod.game.stat.PlayerStatMap
 
 public object PlayerSkillXP {
     public fun internalAddXP(player: Player, stat: String, xp: Double, rate: Double): Int =
-        player.addXP(stat, xp, rate)
+        if (player.xpBlocked) 0 else player.addXP(stat, xp, rate)
 
     private fun Player.addXP(stat: String, xp: Double, rate: Double): Int {
         val fineXp = PlayerStatMap.toFineXP(xp * rate)

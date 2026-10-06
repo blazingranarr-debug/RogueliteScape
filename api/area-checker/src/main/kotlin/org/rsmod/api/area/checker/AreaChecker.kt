@@ -14,11 +14,16 @@ import org.rsmod.map.CoordGrid
 public class AreaChecker @Inject constructor(
     private val regions: RegionRegistry,
     private val areaIndex: AreaIndex,
+    private val overrides: Set<AreaOverride> = emptySet(),
 ) {
     private val areaBuffer = ShortArrayList()
     private val visited = ShortOpenHashSet()
 
     public fun inArea(area: String, coords: CoordGrid): Boolean {
+        for (override in overrides) {
+            override.inArea(area, coords)?.let { return it }
+        }
+
         areaBuffer.clear()
         visited.clear()
 
