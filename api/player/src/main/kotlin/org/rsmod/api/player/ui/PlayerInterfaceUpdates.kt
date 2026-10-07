@@ -28,8 +28,17 @@ public object PlayerInterfaceUpdates {
     public fun updateCombatTab(player: Player) {
         val righthandType = getOrNull(player.righthand)
         val weaponCategory = WeaponCategory.getOrUnarmed(righthandType?.weaponCategory?.id)
-        updateCombatTab(player, righthandType?.name, weaponCategory.id, weaponCategory.text)
+        updateCombatTab(player, righthandType?.name, weaponCategory.clientTabId, weaponCategory.text)
     }
+
+    /** The client has no tab for custom categories; they borrow a tab that has autocast buttons. */
+    private val WeaponCategory.clientTabId: Int
+        get() =
+            when (this) {
+                WeaponCategory.Universal -> WeaponCategory.BladedStaff.id
+                WeaponCategory.Tome -> WeaponCategory.Staff.id
+                else -> id
+            }
 
     public fun updateWeaponCategoryText(player: Player) {
         val righthandType = getOrNull(player.righthand)

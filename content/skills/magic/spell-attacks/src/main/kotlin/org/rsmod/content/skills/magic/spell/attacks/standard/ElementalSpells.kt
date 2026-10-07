@@ -1,11 +1,6 @@
 package org.rsmod.content.skills.magic.spell.attacks.standard
 
-import dev.openrune.rscm.RSCM
-import dev.openrune.rscm.RSCMType
 import dev.openrune.types.ItemServerType
-import dev.openrune.types.SequenceServerType
-import dev.openrune.types.aconverted.SpotanimType
-import dev.openrune.types.aconverted.SynthType
 import org.rsmod.api.combat.commons.CombatAttack
 import org.rsmod.api.combat.manager.MagicRuneManager
 import org.rsmod.api.combat.manager.MagicRuneManager.Companion.isFailure
@@ -20,398 +15,120 @@ import org.rsmod.game.entity.PathingEntity
 import org.rsmod.game.entity.Player
 import org.rsmod.game.type.getOrNull
 
-private const val BOOSTED_SPOTANIM_SUFFIX = "_x2"
-private const val BOOSTED_DAMAGE_MULTIPLIER = 2
+private const val HALF_SPOTANIM_SUFFIX = "_half"
+
+/** Wind, water, earth, fire: the order of each tier's spells and of the bombardment projectiles. */
+private val ELEMENTS = listOf("wind", "water", "earth", "fire")
+
+/** One projectile path per element, so a bombardment's four spells fly visibly apart. */
+private val BOMBARDMENT_PROJANIMS =
+    listOf("projanim.magic_spell", "projanim.magic_spell_double", "projanim.magic_spell_bombard_low", "projanim.magic_spell_bombard_high")
 
 class ElementalSpells : SpellAttackMap {
+    private class Tier(
+        val name: String,
+        val spells: List<String>,
+        val staffAnim: String,
+        val unarmedAnim: String,
+        val maxHit: (magicLvl: Int) -> Int,
+    )
+
+    /** Graphics and sounds of one element's spell in a tier, named `<element><tier>_*` in the cache. */
+    private class ElementFx(spell: String) {
+        val launch = "spotanim.${spell}_casting"
+        val travel = "spotanim.${spell}_travel"
+        val impact = "spotanim.${spell}_impact"
+        val castSound = "synth.${spell}_cast_and_fire"
+        val hitSound = "synth.${spell}_hit"
+    }
+
+    private val tiers =
+        listOf(
+            Tier(
+                name = "strike",
+                spells = listOf("obj.01_wind_strike", "obj.05_water_strike", "obj.09_earth_strike", "obj.13_fire_strike"),
+                staffAnim = "seq.human_caststrike_staff",
+                unarmedAnim = "seq.human_caststrike",
+            ) { lvl ->
+                when {
+                    lvl >= 13 -> 8
+                    lvl >= 9 -> 6
+                    lvl >= 5 -> 4
+                    else -> 2
+                }
+            },
+            Tier(
+                name = "bolt",
+                spells = listOf("obj.17_wind_bolt", "obj.23_water_bolt", "obj.29_earth_bolt", "obj.35_fire_bolt"),
+                staffAnim = "seq.human_caststrike_staff",
+                unarmedAnim = "seq.human_caststrike",
+            ) { lvl ->
+                when {
+                    lvl >= 35 -> 12
+                    lvl >= 29 -> 11
+                    lvl >= 23 -> 10
+                    else -> 9
+                }
+            },
+            Tier(
+                name = "blast",
+                spells = listOf("obj.41_wind_blast", "obj.47_water_blast", "obj.53_earth_blast", "obj.59_fire_blast"),
+                staffAnim = "seq.human_caststrike_staff",
+                unarmedAnim = "seq.human_caststrike",
+            ) { lvl ->
+                when {
+                    lvl >= 59 -> 16
+                    lvl >= 53 -> 15
+                    lvl >= 47 -> 14
+                    else -> 13
+                }
+            },
+            Tier(
+                name = "wave",
+                spells = listOf("obj.62_wind_wave", "obj.65_water_wave", "obj.70_earth_wave", "obj.75_fire_wave"),
+                staffAnim = "seq.human_castwave_staff",
+                unarmedAnim = "seq.human_castwave",
+            ) { lvl ->
+                when {
+                    lvl >= 75 -> 20
+                    lvl >= 70 -> 19
+                    lvl >= 65 -> 18
+                    else -> 17
+                }
+            },
+            Tier(
+                name = "surge",
+                spells = listOf("obj.81_wind_surge", "obj.85_water_surge", "obj.90_earth_surge", "obj.95_fire_surge"),
+                staffAnim = "seq.human_cast_surge",
+                unarmedAnim = "seq.human_cast_surge",
+            ) { lvl ->
+                when {
+                    lvl >= 95 -> 24
+                    lvl >= 90 -> 23
+                    lvl >= 85 -> 22
+                    else -> 21
+                }
+            },
+        )
+
     override fun SpellAttackRepository.register(manager: SpellAttackManager) {
-        registerStrikes(manager)
-        registerBolts(manager)
-        registerBlasts(manager)
-        registerWaves(manager)
-        registerSurges(manager)
-    }
-
-    private fun SpellAttackRepository.registerStrikes(manager: SpellAttackManager) {
-        fun getMaxHit(magicLvl: Int): Int =
-            when {
-                magicLvl >= 13 -> 8
-                magicLvl >= 9 -> 6
-                magicLvl >= 5 -> 4
-                else -> 2
+        for (tier in tiers) {
+            val tierFx = ELEMENTS.map { ElementFx(it + tier.name) }
+            tier.spells.forEachIndexed { element, spell ->
+                register(spell = spell, attack = ElementalSpellAttack(manager, tier, tierFx[element], tierFx))
             }
-
-        register(
-            spell = "obj.01_wind_strike",
-            attack =
-                ElementalSpellAttack(
-                    manager = manager,
-                    staffAnim = "seq.human_caststrike_staff",
-                    unarmedAnim = "seq.human_caststrike",
-                    launch = "spotanim.windstrike_casting",
-                    travel = "spotanim.windstrike_travel",
-                    impact = "spotanim.windstrike_impact",
-                    castSound = "synth.windstrike_cast_and_fire",
-                    hitSound = "synth.windstrike_hit",
-                    getMaxHit = ::getMaxHit,
-                ),
-        )
-
-        register(
-            spell = "obj.05_water_strike",
-            attack =
-                ElementalSpellAttack(
-                    manager = manager,
-                    staffAnim = "seq.human_caststrike_staff",
-                    unarmedAnim = "seq.human_caststrike",
-                    launch = "spotanim.waterstrike_casting",
-                    travel = "spotanim.waterstrike_travel",
-                    impact = "spotanim.waterstrike_impact",
-                    castSound = "synth.waterstrike_cast_and_fire",
-                    hitSound = "synth.waterstrike_hit",
-                    getMaxHit = ::getMaxHit,
-                ),
-        )
-
-        register(
-            spell = "obj.09_earth_strike",
-            attack =
-                ElementalSpellAttack(
-                    manager = manager,
-                    staffAnim = "seq.human_caststrike_staff",
-                    unarmedAnim = "seq.human_caststrike",
-                    launch = "spotanim.earthstrike_casting",
-                    travel = "spotanim.earthstrike_travel",
-                    impact = "spotanim.earthstrike_impact",
-                    castSound = "synth.earthstrike_cast_and_fire",
-                    hitSound = "synth.earthstrike_hit",
-                    getMaxHit = ::getMaxHit,
-                ),
-        )
-
-        register(
-            spell = "obj.13_fire_strike",
-            attack =
-                ElementalSpellAttack(
-                    manager = manager,
-                    staffAnim = "seq.human_caststrike_staff",
-                    unarmedAnim = "seq.human_caststrike",
-                    launch = "spotanim.firestrike_casting",
-                    travel = "spotanim.firestrike_travel",
-                    impact = "spotanim.firestrike_impact",
-                    castSound = "synth.firestrike_cast_and_fire",
-                    hitSound = "synth.firestrike_hit",
-                    getMaxHit = ::getMaxHit,
-                ),
-        )
+        }
     }
 
-    private fun SpellAttackRepository.registerBolts(manager: SpellAttackManager) {
-        fun getMaxHit(magicLvl: Int): Int =
-            when {
-                magicLvl >= 35 -> 12
-                magicLvl >= 29 -> 11
-                magicLvl >= 23 -> 10
-                else -> 9
-            }
-
-        register(
-            spell = "obj.17_wind_bolt",
-            attack =
-                ElementalSpellAttack(
-                    manager = manager,
-                    staffAnim = "seq.human_caststrike_staff",
-                    unarmedAnim = "seq.human_caststrike",
-                    launch = "spotanim.windbolt_casting",
-                    travel = "spotanim.windbolt_travel",
-                    impact = "spotanim.windbolt_impact",
-                    castSound = "synth.windbolt_cast_and_fire",
-                    hitSound = "synth.windbolt_hit",
-                    getMaxHit = ::getMaxHit,
-                ),
-        )
-
-        register(
-            spell = "obj.23_water_bolt",
-            attack =
-                ElementalSpellAttack(
-                    manager = manager,
-                    staffAnim = "seq.human_caststrike_staff",
-                    unarmedAnim = "seq.human_caststrike",
-                    launch = "spotanim.waterbolt_casting",
-                    travel = "spotanim.waterbolt_travel",
-                    impact = "spotanim.waterbolt_impact",
-                    castSound = "synth.waterbolt_cast_and_fire",
-                    hitSound = "synth.waterbolt_hit",
-                    getMaxHit = ::getMaxHit,
-                ),
-        )
-
-        register(
-            spell = "obj.29_earth_bolt",
-            attack =
-                ElementalSpellAttack(
-                    manager = manager,
-                    staffAnim = "seq.human_caststrike_staff",
-                    unarmedAnim = "seq.human_caststrike",
-                    launch = "spotanim.earthbolt_casting",
-                    travel = "spotanim.earthbolt_travel",
-                    impact = "spotanim.earthbolt_impact",
-                    castSound = "synth.earthbolt_cast_and_fire",
-                    hitSound = "synth.earthbolt_hit",
-                    getMaxHit = ::getMaxHit,
-                ),
-        )
-
-        register(
-            spell = "obj.35_fire_bolt",
-            attack =
-                ElementalSpellAttack(
-                    manager = manager,
-                    staffAnim = "seq.human_caststrike_staff",
-                    unarmedAnim = "seq.human_caststrike",
-                    launch = "spotanim.firebolt_casting",
-                    travel = "spotanim.firebolt_travel",
-                    impact = "spotanim.firebolt_impact",
-                    castSound = "synth.firebolt_cast_and_fire",
-                    hitSound = "synth.firebolt_hit",
-                    getMaxHit = ::getMaxHit,
-                ),
-        )
-    }
-
-    private fun SpellAttackRepository.registerBlasts(manager: SpellAttackManager) {
-        fun getMaxHit(magicLvl: Int): Int =
-            when {
-                magicLvl >= 59 -> 16
-                magicLvl >= 53 -> 15
-                magicLvl >= 47 -> 14
-                else -> 13
-            }
-
-        register(
-            spell = "obj.41_wind_blast",
-            attack =
-                ElementalSpellAttack(
-                    manager = manager,
-                    staffAnim = "seq.human_caststrike_staff",
-                    unarmedAnim = "seq.human_caststrike",
-                    launch = "spotanim.windblast_casting",
-                    travel = "spotanim.windblast_travel",
-                    impact = "spotanim.windblast_impact",
-                    castSound = "synth.windblast_cast_and_fire",
-                    hitSound = "synth.windblast_hit",
-                    getMaxHit = ::getMaxHit,
-                ),
-        )
-
-        register(
-            spell = "obj.47_water_blast",
-            attack =
-                ElementalSpellAttack(
-                    manager = manager,
-                    staffAnim = "seq.human_caststrike_staff",
-                    unarmedAnim = "seq.human_caststrike",
-                    launch = "spotanim.waterblast_casting",
-                    travel = "spotanim.waterblast_travel",
-                    impact = "spotanim.waterblast_impact",
-                    castSound = "synth.waterblast_cast_and_fire",
-                    hitSound = "synth.waterblast_hit",
-                    getMaxHit = ::getMaxHit,
-                ),
-        )
-
-        register(
-            spell = "obj.53_earth_blast",
-            attack =
-                ElementalSpellAttack(
-                    manager = manager,
-                    staffAnim = "seq.human_caststrike_staff",
-                    unarmedAnim = "seq.human_caststrike",
-                    launch = "spotanim.earthblast_casting",
-                    travel = "spotanim.earthblast_travel",
-                    impact = "spotanim.earthblast_impact",
-                    castSound = "synth.earthblast_cast_and_fire",
-                    hitSound = "synth.earthblast_hit",
-                    getMaxHit = ::getMaxHit,
-                ),
-        )
-
-        register(
-            spell = "obj.59_fire_blast",
-            attack =
-                ElementalSpellAttack(
-                    manager = manager,
-                    staffAnim = "seq.human_caststrike_staff",
-                    unarmedAnim = "seq.human_caststrike",
-                    launch = "spotanim.fireblast_casting",
-                    travel = "spotanim.fireblast_travel",
-                    impact = "spotanim.fireblast_impact",
-                    castSound = "synth.fireblast_cast_and_fire",
-                    hitSound = "synth.fireblast_hit",
-                    getMaxHit = ::getMaxHit,
-                ),
-        )
-    }
-
-    private fun SpellAttackRepository.registerWaves(manager: SpellAttackManager) {
-        fun getMaxHit(magicLvl: Int): Int =
-            when {
-                magicLvl >= 75 -> 20
-                magicLvl >= 70 -> 19
-                magicLvl >= 65 -> 18
-                else -> 17
-            }
-
-        register(
-            spell = "obj.62_wind_wave",
-            attack =
-                ElementalSpellAttack(
-                    manager = manager,
-                    staffAnim = "seq.human_castwave_staff",
-                    unarmedAnim = "seq.human_castwave",
-                    launch = "spotanim.windwave_casting",
-                    travel = "spotanim.windwave_travel",
-                    impact = "spotanim.windwave_impact",
-                    castSound = "synth.windwave_cast_and_fire",
-                    hitSound = "synth.windwave_hit",
-                    getMaxHit = ::getMaxHit,
-                ),
-        )
-
-        register(
-            spell = "obj.65_water_wave",
-            attack =
-                ElementalSpellAttack(
-                    manager = manager,
-                    staffAnim = "seq.human_castwave_staff",
-                    unarmedAnim = "seq.human_castwave",
-                    launch = "spotanim.waterwave_casting",
-                    travel = "spotanim.waterwave_travel",
-                    impact = "spotanim.waterwave_impact",
-                    castSound = "synth.waterwave_cast_and_fire",
-                    hitSound = "synth.waterwave_hit",
-                    getMaxHit = ::getMaxHit,
-                ),
-        )
-
-        register(
-            spell = "obj.70_earth_wave",
-            attack =
-                ElementalSpellAttack(
-                    manager = manager,
-                    staffAnim = "seq.human_castwave_staff",
-                    unarmedAnim = "seq.human_castwave",
-                    launch = "spotanim.earthwave_casting",
-                    travel = "spotanim.earthwave_travel",
-                    impact = "spotanim.earthwave_impact",
-                    castSound = "synth.earthwave_cast_and_fire",
-                    hitSound = "synth.earthwave_hit",
-                    getMaxHit = ::getMaxHit,
-                ),
-        )
-
-        register(
-            spell = "obj.75_fire_wave",
-            attack =
-                ElementalSpellAttack(
-                    manager = manager,
-                    staffAnim = "seq.human_castwave_staff",
-                    unarmedAnim = "seq.human_castwave",
-                    launch = "spotanim.firewave_casting",
-                    travel = "spotanim.firewave_travel",
-                    impact = "spotanim.firewave_impact",
-                    castSound = "synth.firewave_cast_and_fire",
-                    hitSound = "synth.firewave_hit",
-                    getMaxHit = ::getMaxHit,
-                ),
-        )
-    }
-
-    private fun SpellAttackRepository.registerSurges(manager: SpellAttackManager) {
-        fun getMaxHit(magicLvl: Int): Int =
-            when {
-                magicLvl >= 95 -> 24
-                magicLvl >= 90 -> 23
-                magicLvl >= 85 -> 22
-                else -> 21
-            }
-
-        register(
-            spell = "obj.81_wind_surge",
-            attack =
-                ElementalSpellAttack(
-                    manager = manager,
-                    staffAnim = "seq.human_cast_surge",
-                    unarmedAnim = "seq.human_cast_surge",
-                    launch = "spotanim.windsurge_casting",
-                    travel = "spotanim.windsurge_travel",
-                    impact = "spotanim.windsurge_impact",
-                    castSound = "synth.windsurge_cast_and_fire",
-                    hitSound = "synth.windsurge_hit",
-                    getMaxHit = ::getMaxHit,
-                ),
-        )
-
-        register(
-            spell = "obj.85_water_surge",
-            attack =
-                ElementalSpellAttack(
-                    manager = manager,
-                    staffAnim = "seq.human_cast_surge",
-                    unarmedAnim = "seq.human_cast_surge",
-                    launch = "spotanim.watersurge_casting",
-                    travel = "spotanim.watersurge_travel",
-                    impact = "spotanim.watersurge_impact",
-                    castSound = "synth.watersurge_cast_and_fire",
-                    hitSound = "synth.watersurge_hit",
-                    getMaxHit = ::getMaxHit,
-                ),
-        )
-
-        register(
-            spell = "obj.90_earth_surge",
-            attack =
-                ElementalSpellAttack(
-                    manager = manager,
-                    staffAnim = "seq.human_cast_surge",
-                    unarmedAnim = "seq.human_cast_surge",
-                    launch = "spotanim.earthsurge_casting",
-                    travel = "spotanim.earthsurge_travel",
-                    impact = "spotanim.earthsurge_impact",
-                    castSound = "synth.earthsurge_cast_and_fire",
-                    hitSound = "synth.earthsurge_hit",
-                    getMaxHit = ::getMaxHit,
-                ),
-        )
-
-        register(
-            spell = "obj.95_fire_surge",
-            attack =
-                ElementalSpellAttack(
-                    manager = manager,
-                    staffAnim = "seq.human_cast_surge",
-                    unarmedAnim = "seq.human_cast_surge",
-                    launch = "spotanim.firesurge_casting",
-                    travel = "spotanim.firesurge_travel",
-                    impact = "spotanim.firesurge_impact",
-                    castSound = "synth.firesurge_cast_and_fire",
-                    hitSound = "synth.firesurge_hit",
-                    getMaxHit = ::getMaxHit,
-                ),
-        )
-    }
-
+    /**
+     * A standard elemental spell. With Elemental bombardment it instead fires every element of its
+     * tier at once, each at half size and half the max hit; runes are only paid for the cast spell.
+     */
     private class ElementalSpellAttack(
         private val manager: SpellAttackManager,
-        private val staffAnim: String,
-        private val unarmedAnim: String,
-        private val launch: String,
-        private val travel: String,
-        private val impact: String,
-        private val castSound: String,
-        private val hitSound: String,
-        private val getMaxHit: (Int) -> Int,
+        private val tier: Tier,
+        private val fx: ElementFx,
+        private val tierFx: List<ElementFx>,
     ) : SpellAttack {
         override suspend fun ProtectedAccess.attack(target: Npc, attack: CombatAttack.Spell) {
             cast(target, attack)
@@ -426,16 +143,18 @@ class ElementalSpells : SpellAttackMap {
             if (castResult.isFailure()) {
                 return
             }
-            val weaponType = getOrNull(attack.weapon)
-            val castAnim = weaponType.castStrikeAnim()
-            val boosted = manager.boostElementalSpells(this)
-
-            player.anim(castAnim, priority = 6)
-            spotanim(launch.boosted(boosted), height = 92)
-
-            fire(target, attack, castResult, "projanim.magic_spell", boosted)
-            if (boosted) {
-                fire(target, attack, castResult, "projanim.magic_spell_double", boosted)
+            player.anim(getOrNull(attack.weapon).castAnim(), priority = 6)
+            val maxHit = tier.maxHit(player.magicLvl)
+            if (!manager.boostElementalSpells(this)) {
+                spotanim(fx.launch, height = 92)
+                fire(target, attack, castResult, fx, "projanim.magic_spell", maxHit, suffix = "")
+            } else {
+                spotanim(fx.launch + HALF_SPOTANIM_SUFFIX, height = 92)
+                val halfMaxHit = (maxHit / 2).coerceAtLeast(1)
+                tierFx.forEachIndexed { element, elementFx ->
+                    val projanim = BOMBARDMENT_PROJANIMS[element]
+                    fire(target, attack, castResult, elementFx, projanim, halfMaxHit, HALF_SPOTANIM_SUFFIX)
+                }
             }
             manager.continueCombatIfAutocast(this, target)
         }
@@ -444,43 +163,42 @@ class ElementalSpells : SpellAttackMap {
             target: PathingEntity,
             attack: CombatAttack.Spell,
             castResult: MagicRuneManager.CastResult,
+            fx: ElementFx,
             projanim: String,
-            boosted: Boolean,
+            baseMaxHit: Int,
+            suffix: String,
         ) {
-            val proj = manager.spawnProjectile(this, target, travel.boosted(boosted), projanim)
+            val proj = manager.spawnProjectile(this, target, fx.travel + suffix, projanim)
             val (serverDelay, clientDelay) = proj.durations
             val spell = attack.spell.obj
 
             val splash = manager.rollSplash(this, target, attack, castResult)
             if (splash) {
-                manager.playSplashFx(this, target, clientDelay, castSound, soundRadius = 8)
+                manager.playSplashFx(this, target, clientDelay, fx.castSound, soundRadius = 8)
                 manager.queueSplashHit(this, target, spell, clientDelay, serverDelay)
                 return
             }
 
-            val baseMaxHit = getMaxHit(player.magicLvl) * if (boosted) BOOSTED_DAMAGE_MULTIPLIER else 1
             val damage = manager.rollMaxHit(this, target, attack, castResult, baseMaxHit)
             manager.playHitFx(
                 source = this,
                 target = target,
                 clientDelay = clientDelay,
-                castSound = castSound,
+                castSound = fx.castSound,
                 soundRadius = 8,
-                hitSpot = impact.boosted(boosted),
+                hitSpot = fx.impact + suffix,
                 hitSpotHeight = 124,
-                hitSound = hitSound,
+                hitSound = fx.hitSound,
             )
             manager.giveCombatXp(this, target, attack, damage)
             manager.queueMagicHit(this, target, spell, damage, clientDelay, serverDelay)
         }
 
-        private fun String.boosted(boosted: Boolean): String = if (boosted) this + BOOSTED_SPOTANIM_SUFFIX else this
-
-        private fun ItemServerType?.castStrikeAnim(): String =
+        private fun ItemServerType?.castAnim(): String =
             if (this != null && isCategoryType("category.staff")) {
-                staffAnim
+                tier.staffAnim
             } else {
-                unarmedAnim
+                tier.unarmedAnim
             }
     }
 }

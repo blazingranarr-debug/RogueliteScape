@@ -14,6 +14,7 @@ import org.rsmod.api.combat.manager.MagicRuneManager.Companion.isFailure
 import org.rsmod.api.config.refs.params
 import org.rsmod.api.invtx.invTransaction
 import org.rsmod.api.invtx.select
+import org.rsmod.api.player.hook.HomeDestination
 import org.rsmod.api.player.hook.PlayerTeleportValidator
 import org.rsmod.api.player.hook.TeleportType
 import org.rsmod.api.player.output.ChatType
@@ -36,6 +37,7 @@ constructor(
     private val runes: MagicRuneManager,
     private val teleportValidator: PlayerTeleportValidator,
     private val areaChecker: AreaChecker,
+    private val homes: Set<HomeDestination>,
 ) : PluginScript() {
     override fun ScriptContext.startup() {
         for (teleport in SpellTeleport.entries) {
@@ -66,7 +68,9 @@ constructor(
         }
 
         val option = teleport.option(op)
-        val destination = teleport.destination(spell, option)
+        val serverHome =
+            if (teleport == SpellTeleport.Home) homes.firstNotNullOfOrNull { it.home(player) } else null
+        val destination = serverHome ?: teleport.destination(spell, option)
         if (destination == null) {
             mes(option.missingDestinationMessage)
             return

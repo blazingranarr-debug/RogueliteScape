@@ -70,11 +70,13 @@ public class AutocastWeapons @Inject constructor(private val spells: AutocastSpe
         }
         return when (spellbook) {
             Spellbook.Standard -> true
-            Spellbook.Ancients -> weapon.id in AncientAutocastWeapons
-            Spellbook.Arceuus -> weapon.id in ArceuusAutocastWeapons
+            Spellbook.Ancients -> weapon.id in AncientAutocastWeapons || category.isCustom()
+            Spellbook.Arceuus -> weapon.id in ArceuusAutocastWeapons || category.isCustom()
             else -> false
         }
     }
+
+    private fun WeaponCategory.isCustom(): Boolean = this == WeaponCategory.Universal || this == WeaponCategory.Tome
 
     public fun unsupportedSpellbookMessage(spellbook: Spellbook?): String =
         when (spellbook) {
@@ -113,13 +115,15 @@ public class AutocastWeapons @Inject constructor(private val spells: AutocastSpe
     // them in an enum config instead.
     public fun getVarBits(category: WeaponCategory): StaffVarBits? =
         when (category) {
-            WeaponCategory.Staff ->
+            WeaponCategory.Staff,
+            WeaponCategory.Tome ->
                 StaffVarBits(
                     "varbit.saved_autocast_spell_staff",
                     "varbit.saved_defensive_casting_staff",
                 )
 
-            WeaponCategory.BladedStaff ->
+            WeaponCategory.BladedStaff,
+            WeaponCategory.Universal ->
                 StaffVarBits(
                     "varbit.saved_autocast_spell_bladed_staff",
                     "varbit.saved_defensive_casting_bladed_staff",

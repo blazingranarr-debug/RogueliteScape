@@ -6,7 +6,9 @@ import dev.openrune.cache.tools.iftype.PackIfType
 import dev.openrune.cache.tools.tasks.CacheTask
 import dev.openrune.cache.tools.tasks.impl.PackDBTables
 import dev.openrune.cache.tools.tasks.impl.PackWorldMap
+import dev.openrune.cache.tools.tasks.impl.PackMaps
 import dev.openrune.cache.tools.tasks.impl.PackModels
+import dev.openrune.cache.tools.tasks.impl.XteaType
 import dev.openrune.cache.tools.tasks.impl.defs.PackConfig
 import dev.openrune.definition.dbtables.DBTable
 import dev.openrune.gamevals.GameValProvider
@@ -57,6 +59,7 @@ class PluginPacks(val projectRoot: File, val all: List<PluginPack>) {
 
         configDirectories().forEach { tasks += PackConfig(it) }
         active.mapNotNull { it.modelDirectory() }.forEach { tasks += PackModels(it) }
+        active.mapNotNull { it.mapDirectory() }.forEach { tasks += PackMaps(it, xteaType = XteaType.NO_KEYS) }
 
         val legacySprites = File("../.data/raw-cache/sprites")
         if (legacySprites.isDirectory) {

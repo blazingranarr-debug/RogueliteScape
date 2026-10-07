@@ -29,7 +29,12 @@ public enum class WeaponCategory(public val id: Int, public val text: String) {
     GodSword(23, "2h sword"),
     PoweredStaff(24, "Powered Staff"),
     Bludgeon(27, "Bludgeon"),
-    Bulwark(28, "Bulwark");
+    Bulwark(28, "Bulwark"),
+    // Custom: one weapon with a rapid ranged stance, slash melee stances and autocast. The client is
+    // shown the Bladed staff tab (which has the autocast buttons) for it.
+    Universal(29, "Universal"),
+    // Custom: magic stances (a built-in powered attack) plus autocast. The client is shown the Staff tab.
+    Tome(30, "Tome");
 
     public companion object {
         public fun getOrUnarmed(id: Int?): WeaponCategory =
@@ -68,6 +73,8 @@ public enum class WeaponCategory(public val id: Int, public val text: String) {
                 PoweredStaff.id -> PoweredStaff
                 Bludgeon.id -> Bludgeon
                 Bulwark.id -> Bulwark
+                Universal.id -> Universal
+                Tome.id -> Tome
                 else -> null
             }
     }

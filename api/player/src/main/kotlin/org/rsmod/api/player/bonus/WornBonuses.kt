@@ -18,6 +18,15 @@ import org.rsmod.game.type.getOrNull
 /** Prayer bonus granted by effects rather than equipment; shown and used like worn bonus. */
 public val EXTRA_PRAYER_BONUS: AttributeKey<Int> = AttributeKey()
 
+/** Melee strength bonus granted by effects rather than equipment. */
+public val EXTRA_MELEE_STR_BONUS: AttributeKey<Int> = AttributeKey()
+
+/** Ranged strength bonus granted by effects rather than equipment. */
+public val EXTRA_RANGED_STR_BONUS: AttributeKey<Int> = AttributeKey()
+
+/** Magic damage bonus in tenths of a percent (`20` = +2%) granted by effects rather than equipment. */
+public val EXTRA_MAGIC_DMG_BONUS: AttributeKey<Int> = AttributeKey()
+
 public class WornBonuses {
     public fun strengthBonus(player: Player): Int {
         val bonuses = calculate(player)
@@ -213,9 +222,9 @@ public class WornBonuses {
             defCrush = defCrush,
             defRange = defRange,
             defMagic = defMagic,
-            meleeStr = meleeStr,
-            rangedStr = rangedStr,
-            magicDmg = magicDmg,
+            meleeStr = meleeStr + (player.attr[EXTRA_MELEE_STR_BONUS] ?: 0),
+            rangedStr = rangedStr + (player.attr[EXTRA_RANGED_STR_BONUS] ?: 0),
+            magicDmg = magicDmg + (player.attr[EXTRA_MAGIC_DMG_BONUS] ?: 0),
             prayer = prayer + (player.attr[EXTRA_PRAYER_BONUS] ?: 0),
             undead = undead,
             slayer = slayer,

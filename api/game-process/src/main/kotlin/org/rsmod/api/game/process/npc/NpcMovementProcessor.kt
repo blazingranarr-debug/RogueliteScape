@@ -85,7 +85,13 @@ constructor(
                 }
             }
 
-            val step = stepFactory.validated(this, current, target, collision)
+            val step =
+                if (noClip) {
+                    if (current == target) break
+                    stepFactory.unvalidated(current, target)
+                } else {
+                    stepFactory.validated(this, current, target, collision)
+                }
             if (step == CoordGrid.NULL) {
                 break
             }

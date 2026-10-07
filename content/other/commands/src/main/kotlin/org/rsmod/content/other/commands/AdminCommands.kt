@@ -57,7 +57,6 @@ import org.rsmod.content.other.commands.perks.MetaProgress
 import org.rsmod.content.other.commands.portal.AdminPortals
 import org.rsmod.content.other.commands.ui.AdminMenuUi
 import org.rsmod.content.other.commands.ui.MenuMode
-import org.rsmod.content.other.commands.ui.AdminToolUi
 import org.rsmod.game.GameUpdate
 import org.rsmod.game.cheat.Cheat
 import org.rsmod.game.entity.Npc
@@ -87,7 +86,6 @@ internal constructor(
     private val instances: AdminInstances,
     private val portals: AdminPortals,
     private val godMode: AdminGodMode,
-    private val adminToolUi: AdminToolUi,
     private val adminMenuUi: AdminMenuUi,
     private val dropUi: AdminDropUi,
     private val metaProgress: MetaProgress,
@@ -256,8 +254,8 @@ internal constructor(
         onCommand("adminwand", "Spawn the admin wand", ::adminWand)
         onCommand("builderhammer", "Spawn the Builder's hammer", ::builderHammer)
         onCommand("builderchisel", "Spawn the Builder's chisel (left-click pastes)", ::builderChisel)
-        onCommand("instances", "List admin instances", ::listInstances)
-        onCommand("admintool", "Open the Admin Tool interface", ::adminTool)
+        onCommand("instances", "List roguelike instances", ::listInstances)
+        onCommand("admintool", "Open the Admin menu (the old Admin Tool was merged into it)", ::adminMenu)
         onCommand("adminmenu", "Open the Admin menu", ::adminMenu)
         onCommand("builder", "Open the Environment Builder", ::builderMenu)
         onCommand("perkpoints", "Give yourself perk-tree points (ex: ::perkpoints 50)", ::perkPoints) {
@@ -789,10 +787,10 @@ internal constructor(
         with(cheat) {
             val all = instances.all()
             if (all.isEmpty()) {
-                player.mes("There are no admin instances.")
+                player.mes("There are no roguelike instances.")
                 return
             }
-            player.mes("Admin instances (${all.size}):")
+            player.mes("Roguelike instances (${all.size}):")
             for (record in all) {
                 player.mes(
                     "  #${record.id} ${record.name} by ${record.createdBy}: " +
@@ -822,9 +820,6 @@ internal constructor(
             }
             protectedAccess.launch(player) { with(dropUi) { open(type, admin = true) } }
         }
-
-    private fun adminTool(cheat: Cheat) =
-        with(cheat) { protectedAccess.launch(player) { with(adminToolUi) { open() } } }
 
     private fun adminMenu(cheat: Cheat) =
         with(cheat) { protectedAccess.launch(player) { with(adminMenuUi) { open() } } }

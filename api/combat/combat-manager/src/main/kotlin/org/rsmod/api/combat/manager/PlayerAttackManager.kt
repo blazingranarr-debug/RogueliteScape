@@ -102,8 +102,16 @@ constructor(
         player.actionDelay = player.currentMapClock + modified
     }
 
+    public fun spellAttackRate(player: Player, default: Int): Int =
+        perkHooks.firstNotNullOfOrNull { it.spellAttackRate(player) } ?: default
+
     public fun boostElementalSpells(player: Player): Boolean =
         perkHooks.any { it.boostElementalSpells(player) }
+
+    private fun Player.alwaysHits(): Boolean = adminMaxHit || perkHooks.any { it.alwaysHits(this) }
+
+    private fun Player.modifyDamage(target: PathingEntity, damage: Int): Int =
+        perkHooks.fold(damage) { current, hook -> hook.modifyDamage(this, target, current) }
 
     private fun notifyAttack(source: Player, target: PathingEntity, damage: Int) {
         for (hook in perkHooks) {
@@ -557,7 +565,7 @@ constructor(
         blockType: MeleeAttackType?,
         multiplier: Double,
     ): Boolean {
-        if (source.adminMaxHit) {
+        if (source.alwaysHits()) {
             return true
         }
         return when (target) {
@@ -713,11 +721,13 @@ constructor(
         target: PathingEntity,
         damage: Int,
         delay: Int = 1,
-    ): Hit =
-        when (target) {
-            is Npc -> queueMeleeHit(source, target, damage, delay)
-            is Player -> queueMeleeHit(source, target, damage, delay)
+    ): Hit {
+        val modified = source.modifyDamage(target, damage)
+        return when (target) {
+            is Npc -> queueMeleeHit(source, target, modified, delay)
+            is Player -> queueMeleeHit(source, target, modified, delay)
         }
+    }
 
     private fun queueMeleeHit(source: Player, target: Npc, damage: Int, delay: Int): Hit {
         notifyAttack(source, target, damage)
@@ -824,7 +834,7 @@ constructor(
         blockType: RangedAttackType?,
         multiplier: Double,
     ): Boolean {
-        if (source.adminMaxHit) {
+        if (source.alwaysHits()) {
             return true
         }
         return when (target) {
@@ -1026,11 +1036,13 @@ constructor(
         damage: Int,
         clientDelay: Int,
         hitDelay: Int,
-    ): Hit =
-        when (target) {
-            is Npc -> queueRangedHit(source, target, ammo, damage, clientDelay, hitDelay)
-            is Player -> queueRangedHit(source, target, ammo, damage, clientDelay, hitDelay)
+    ): Hit {
+        val modified = source.modifyDamage(target, damage)
+        return when (target) {
+            is Npc -> queueRangedHit(source, target, ammo, modified, clientDelay, hitDelay)
+            is Player -> queueRangedHit(source, target, ammo, modified, clientDelay, hitDelay)
         }
+    }
 
     private fun queueRangedHit(
         source: Player,
@@ -1114,11 +1126,13 @@ constructor(
         ammo: ItemServerType?,
         damage: Int,
         hitDelay: Int,
-    ): Hit =
-        when (target) {
-            is Npc -> queueRangedDamage(source, target, ammo, damage, hitDelay)
-            is Player -> queueRangedDamage(source, target, ammo, damage, hitDelay)
+    ): Hit {
+        val modified = source.modifyDamage(target, damage)
+        return when (target) {
+            is Npc -> queueRangedDamage(source, target, ammo, modified, hitDelay)
+            is Player -> queueRangedDamage(source, target, ammo, modified, hitDelay)
         }
+    }
 
     private fun queueRangedDamage(
         source: Player,
@@ -1180,7 +1194,7 @@ constructor(
         spellbook: Spellbook?,
         sunfireRune: Boolean,
     ): Boolean {
-        if (source.adminMaxHit) {
+        if (source.alwaysHits()) {
             return true
         }
         return when (target) {
@@ -1371,6 +1385,9 @@ constructor(
         attackStyle: MagicAttackStyle?,
         multiplier: Double,
     ): Boolean {
+        if (source.alwaysHits()) {
+            return true
+        }
         return when (target) {
             is Npc -> rollStaffAccuracy(source, target, attackStyle, multiplier)
             is Player -> rollStaffAccuracy(source, target, attackStyle, multiplier)
@@ -1524,6 +1541,16 @@ constructor(
         clientDelay: Int,
         hitDelay: Int,
         retaliationDelay: Int = hitDelay,
+    ): Hit = queueMagicDamage(source, target, spell, source.modifyDamage(target, damage), clientDelay, hitDelay, retaliationDelay)
+
+    private fun queueMagicDamage(
+        source: Player,
+        target: PathingEntity,
+        spell: ItemServerType?,
+        damage: Int,
+        clientDelay: Int,
+        hitDelay: Int,
+        retaliationDelay: Int,
     ): Hit =
         when (target) {
             is Npc ->
@@ -1623,7 +1650,7 @@ constructor(
         clientDelay: Int,
         hitDelay: Int,
     ): Hit =
-        queueMagicHit(
+        queueMagicDamage(
             source = source,
             target = target,
             spell = spell,

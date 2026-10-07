@@ -55,9 +55,20 @@ dependencies {
     implementation(projects.server.shared)
 }
 
+// The server runs from a copy of its classpath, so builds made while it is up (which rewrite the
+// module jars it loads classes from lazily) can't pull classes out from under it.
+val runClasspath = layout.buildDirectory.dir("run-classpath")
+val snapshotRunClasspath by tasks.registering(Sync::class) {
+    description = "Copies the server's runtime classpath for the run task"
+    from(sourceSets.main.map { it.runtimeClasspath })
+    into(runClasspath)
+}
+
 tasks.named<JavaExec>("run") {
     description = "Runs the RS Mod game server"
     workingDir = rootProject.projectDir
+    dependsOn(snapshotRunClasspath)
+    classpath = files(runClasspath) + fileTree(runClasspath) { include("*.jar") }
 }
 
 tasks.named<ShadowJar>("shadowJar") {

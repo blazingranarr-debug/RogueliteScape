@@ -69,6 +69,14 @@ tasks {
         mainClass.set("dev.openrune.tools.NpcAnimationFiller")
     }
 
+    register<JavaExec>("exportModel") {
+        group = "tools"
+        description =
+            "Exports cache models as Blender-importable .dat files: --args=\"<model id | obj.x | npc.x | loc.x> [outDir]\""
+        classpath = sourceSets["main"].runtimeClasspath
+        mainClass.set("dev.openrune.tools.models.ModelExport")
+    }
+
     register<JavaExec>("mergePluginGamevals") {
         group = "cache"
         description =

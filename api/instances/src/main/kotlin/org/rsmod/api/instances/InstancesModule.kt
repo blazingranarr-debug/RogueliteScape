@@ -13,5 +13,6 @@ public class InstancesModule : PluginModule() {
         addSetBinding<NpcDamageContributor>(InstanceNpcDamageContributor::class.java)
         addSetBinding<PlayerDeathCleanupHook>(InstanceDeathCleanupHook::class.java)
         addSetBinding<NpcDeathKillHook>(InstanceBossDeathHook::class.java)
+        newSetBinding<InstanceSpawnPoint>()
     }
 }

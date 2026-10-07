@@ -201,7 +201,7 @@ public class Npc(
         get() = isDelayed
 
     public val canProcess: Boolean
-        get() = isNotDelayed && isVisible
+        get() = isSlotAssigned && isNotDelayed && isVisible
 
     public val id: Int
         get() = type.id
@@ -210,6 +210,9 @@ public class Npc(
         get() = type.name
 
     public var moveRestrict: MoveRestrict = type.moveRestrict
+
+    /** Steps ignore all collision, so the npc walks straight through objects. */
+    public var noClip: Boolean = false
 
     public val blockWalk: BlockWalk
         get() = type.blockWalk

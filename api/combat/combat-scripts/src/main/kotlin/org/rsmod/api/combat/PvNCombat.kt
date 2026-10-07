@@ -239,7 +239,7 @@ constructor(
             return
         }
 
-        val attackRate = MAGIC_SPELL_ATTACK_RATE
+        val attackRate = manager.spellAttackRate(player, MAGIC_SPELL_ATTACK_RATE)
         manager.setNextAttackDelay(player, attackRate)
 
         val spell = spellsReg[RSCM.getReverseMapping(RSCMType.OBJ,attack.spell.obj.id)]

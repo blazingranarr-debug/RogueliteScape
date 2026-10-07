@@ -1,5 +1,6 @@
 package org.rsmod.api.combat.player
 
+import dev.openrune.util.WeaponCategory
 import kotlin.math.min
 import org.rsmod.api.combat.MAGIC_ATTACK_RANGE
 import org.rsmod.api.combat.MAX_ATTACK_RANGE
@@ -37,6 +38,9 @@ internal fun ProtectedAccess.weaponAttackRange(style: AttackStyle?): Int {
     var attackRange = 1
 
     val weapon = player.righthand
+    if (weapon != null && style?.isRanged != true && weapon.isUniversal()) {
+        return 1
+    }
     if (weapon != null) {
         val weaponRange = ocParam(weapon, params.attackrange)
         val increase = if (style == AttackStyle.LongrangeRanged) 2 else 0
@@ -239,3 +243,6 @@ internal fun ProtectedAccess.setPkVars(target: Player) {
     target.lastCombatPvp = mapClock
     target.aggressiveNpc = null
 }
+
+/** Universal weapons reach their [params.attackrange] only from the ranged stance; melee stays adjacent. */
+private fun InvObj.isUniversal(): Boolean = getInvObj(this).weaponCategory?.id == WeaponCategory.Universal.id

@@ -21,6 +21,9 @@ abstract class PluginPack {
 
     fun modelDirectory(): File? = resourceDirectory(MODELS)
 
+    /** RSPSi map exports: `.pack` files (named ending in their base region id) or `l`/`m` region pairs. */
+    fun mapDirectory(): File? = resourceDirectory(MAPS)
+
     fun spriteDirectory(): File? = resourceDirectory(SPRITES)
 
     fun cs2Directory(): File? = resourceDirectory(CS2)
@@ -63,6 +66,7 @@ abstract class PluginPack {
 
         const val CONFIGS = "configs"
         const val MODELS = "models"
+        const val MAPS = "maps"
         const val SPRITES = "sprites"
         const val CS2 = "cs2"
         const val INTERFACES = "interfaces"
